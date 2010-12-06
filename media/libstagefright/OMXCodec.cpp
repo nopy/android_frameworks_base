@@ -1585,7 +1585,11 @@ status_t OMXCodec::init() {
     }
 
     err = allocateBuffers();
-    CHECK_EQ(err, OK);
+    if (err != OK)
+    {
+        setState(ERROR);
+        return err;
+    }
 
     if (mQuirks & kRequiresLoadedToIdleAfterAllocation) {
         err = mOMX->sendCommand(mNode, OMX_CommandStateSet, OMX_StateIdle);
@@ -1668,8 +1672,11 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
                     def.format.video.nFrameHeight,
                     PIXEL_FORMAT_RGBA_8888,
                     grBuffer);
-
-            CHECK(err == NO_ERROR);
+            if (err != OK) {
+                LOGE("allocateBuffersOnPort(%s) failed in createGraphicBuffer()",
+                     portIndex == kPortIndexInput ? "input" : "output");
+                return err;
+            }
 
             err = mOMX->useEGLImage(
                     mNode, portIndex, grBuffer, &buffer);
@@ -1860,6 +1867,15 @@ void OMXCodec::on_message(const omx_message &msg) {
                     mOMX->freeBuffer(mNode, kPortIndexOutput, buffer);
                 CHECK_EQ(err, OK);
 
+                if (info->mMediaBuffer != NULL) {
+                    info->mMediaBuffer->setObserver(NULL);
+
+                    // Make sure nobody but us owns this buffer at this point.
+                    CHECK_EQ(info->mMediaBuffer->refcount(), 0);
+
+                    info->mMediaBuffer->release();
+                }
+
                 buffers->removeAt(i);
 #if 0
             } else if (mPortStatus[kPortIndexOutput] == ENABLED
@@ -1901,7 +1917,22 @@ void OMXCodec::on_message(const omx_message &msg) {
                         msg.u.extended_buffer_data.range_offset,
                         msg.u.extended_buffer_data.range_length);
 
+                // If we are using EGLImage path, we want to preserve the
+                // information about buffer type so that we can release the
+                // embedded GraphicsBuffer in MediaBuffer destructor.
+                //
+                // This is workaroud fix for nvbugs 766288, 766285. The
+                // information of EGLImage usage should be stored elsewhere but
+                // we want to preserve backwards compatibility.
+
+                int32_t btype = 0;
+                if (mUseEGLImage)
+                    buffer->meta_data()->findInt32(kKeyBufferType, &btype);
+
                 buffer->meta_data()->clear();
+
+                if (mUseEGLImage)
+                    buffer->meta_data()->setInt32(kKeyBufferType, btype);
 
                 buffer->meta_data()->setInt64(
                         kKeyTime, msg.u.extended_buffer_data.timestamp);
