@@ -1892,7 +1892,15 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
 
         case OMX_EventPortSettingsChanged:
         {
-            onPortSettingsChanged(data1);
+            CODEC_LOGV("OMX_EventPortSettingsChanged(port=%ld, data2=0x%08lx)",
+                       data1, data2);
+
+            if (data2 == 0 || data2 == OMX_IndexParamPortDefinition) {
+                onPortSettingsChanged(data1);
+            } else if (data1 == kPortIndexOutput
+                    && data2 == OMX_IndexConfigCommonOutputCrop) {
+                // todo: handle crop rect
+            }
             break;
         }
 
