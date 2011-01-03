@@ -49,6 +49,10 @@ struct OMXNodeInstance {
     status_t getConfig(OMX_INDEXTYPE index, void *params, size_t size);
     status_t setConfig(OMX_INDEXTYPE index, const void *params, size_t size);
 
+    status_t useEGLImage(
+            OMX_U32 portIndex, const sp<GraphicBuffer> &grbuffer,
+            OMX::buffer_id *buffer);
+
     status_t useBuffer(
             OMX_U32 portIndex, const sp<IMemory> &params,
             OMX::buffer_id *buffer);
@@ -93,6 +97,7 @@ private:
         OMX::buffer_id mID;
     };
     Vector<ActiveBuffer> mActiveBuffers;
+    static int sActiveEglImages;
 
     ~OMXNodeInstance();
 

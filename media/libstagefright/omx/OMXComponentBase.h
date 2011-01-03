@@ -47,6 +47,12 @@ struct OMXComponentBase {
     virtual OMX_ERRORTYPE getExtensionIndex(
             const OMX_STRING name, OMX_INDEXTYPE *index) = 0;
 
+    virtual OMX_ERRORTYPE useEGLImage(
+            OMX_BUFFERHEADERTYPE **bufHdr,
+            OMX_U32 portIndex,
+            OMX_PTR appPrivate,
+            void* eglImage) = 0;
+
     virtual OMX_ERRORTYPE useBuffer(
             OMX_BUFFERHEADERTYPE **bufHdr,
             OMX_U32 portIndex,

@@ -21,6 +21,7 @@ enum {
     SET_PARAMETER,
     GET_CONFIG,
     SET_CONFIG,
+    USE_EGLIMAGE,
     USE_BUFFER,
     ALLOC_BUFFER,
     ALLOC_BUFFER_WITH_BACKUP,
@@ -218,6 +219,28 @@ public:
         remote()->transact(SET_CONFIG, data, &reply);
 
         return reply.readInt32();
+    }
+
+    virtual status_t useEGLImage(
+            node_id node, OMX_U32 port_index, const sp<GraphicBuffer> &grbuffer,
+            buffer_id *buffer) {
+        Parcel data, reply;
+
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.write(*grbuffer);
+        remote()->transact(USE_EGLIMAGE, data, &reply);
+        status_t err = reply.readInt32();
+        if (err != OK) {
+            *buffer = 0;
+
+            return err;
+        }
+
+        *buffer = (void*)reply.readIntPtr();
+
+        return err;
     }
 
     virtual status_t useBuffer(
@@ -543,6 +566,30 @@ status_t BnOMX::onTransact(
             void *params = const_cast<void *>(data.readInplace(size));
 
             reply->writeInt32(setConfig(node, index, params, size));
+
+            return NO_ERROR;
+        }
+
+        case USE_EGLIMAGE:
+        {
+            CHECK_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+
+            sp<GraphicBuffer> grbuffer = new GraphicBuffer();
+            status_t err = data.read(*grbuffer);
+            if (err != NO_ERROR) {
+                return err;
+            }
+
+            buffer_id buffer;
+            err = useEGLImage(node, port_index, grbuffer, &buffer);
+            reply->writeInt32(err);
+
+            if (err == OK) {
+                reply->writeIntPtr((intptr_t)buffer);
+            }
 
             return NO_ERROR;
         }

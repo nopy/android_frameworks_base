@@ -107,6 +107,17 @@ static OMX_ERRORTYPE GetStateWrapper(
     return getBase(hComponent)->getState(pState);
 }
 
+static OMX_ERRORTYPE UseEGLImageWrapper(
+        OMX_IN OMX_HANDLETYPE hComponent,
+        OMX_INOUT OMX_BUFFERHEADERTYPE** ppBufferHdr,
+        OMX_IN OMX_U32 nPortIndex,
+        OMX_IN OMX_PTR pAppPrivate,
+        OMX_IN void* eglImage)
+{
+    return getBase(hComponent)->useEGLImage(
+            ppBufferHdr, nPortIndex, pAppPrivate, eglImage);
+}
+
 static OMX_ERRORTYPE UseBufferWrapper(
         OMX_IN OMX_HANDLETYPE hComponent,
         OMX_INOUT OMX_BUFFERHEADERTYPE** ppBufferHdr,
@@ -190,7 +201,7 @@ OMX_COMPONENTTYPE *OMXComponentBase::MakeComponent(OMXComponentBase *base) {
     result->FillThisBuffer = FillThisBufferWrapper;
     result->SetCallbacks = NULL;
     result->ComponentDeInit = ComponentDeInitWrapper;
-    result->UseEGLImage = NULL;
+    result->UseEGLImage = UseEGLImageWrapper;
     result->ComponentRoleEnum = ComponentRoleEnumWrapper;
 
     base->setComponentHandle(result);

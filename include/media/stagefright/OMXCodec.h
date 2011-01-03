@@ -38,6 +38,7 @@ struct OMXCodec : public MediaSource,
         // The client wants to access the output buffer's video
         // data for example for thumbnail extraction.
         kClientNeedsFramebuffer  = 4,
+        kUseEGLImage = 8,
     };
     static sp<MediaSource> Create(
             const sp<IOMX> &omx,
@@ -118,6 +119,7 @@ private:
         sp<IMemory> mMem;
         size_t mSize;
         void *mData;
+        sp<GraphicBuffer> mGraphicBuffer;
         MediaBuffer *mMediaBuffer;
     };
 
@@ -130,6 +132,7 @@ private:
     bool mOMXLivesLocally;
     IOMX::node_id mNode;
     uint32_t mQuirks;
+    bool mUseEGLImage;
     bool mIsEncoder;
     char *mMIME;
     char *mComponentName;
@@ -164,9 +167,9 @@ private:
     List<size_t> mFilledBuffers;
     Condition mBufferFilled;
 
-    OMXCodec(const sp<IOMX> &omx, IOMX::node_id node, uint32_t quirks,
-             bool isEncoder, const char *mime, const char *componentName,
-             const sp<MediaSource> &source);
+    OMXCodec(const sp<IOMX> &omx, IOMX::node_id node, bool useEGLImage,
+             uint32_t quirks, bool isEncoder, const char *mime,
+             const char *componentName, const sp<MediaSource> &source);
 
     void addCodecSpecificData(const void *data, size_t size);
     void clearCodecSpecificData();
@@ -211,12 +214,17 @@ private:
             OMX_U32 width, OMX_U32 height, OMX_U32 compressedSize);
 
     void setMinBufferSize(OMX_U32 portIndex, OMX_U32 size);
+    void setMinBufferCount(OMX_U32 portIndex, OMX_U32 count);
 
     void setRawAudioFormat(
             OMX_U32 portIndex, int32_t sampleRate, int32_t numChannels);
 
     status_t allocateBuffers();
     status_t allocateBuffersOnPort(OMX_U32 portIndex);
+
+    status_t createGraphicBuffer(
+            int32_t w, int32_t h, PixelFormat format,
+            sp<GraphicBuffer>& grBuffer);
 
     status_t freeBuffersOnPort(
             OMX_U32 portIndex, bool onlyThoseWeOwn = false);

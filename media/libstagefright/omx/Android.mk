@@ -24,6 +24,7 @@ LOCAL_CFLAGS += -DNO_OPENCORE
 endif
 
 LOCAL_C_INCLUDES += $(TOP)/frameworks/base/include/media/stagefright/openmax
+LOCAL_CFLAGS += -DEGL_EGLEXT_PROTOTYPES
 
 LOCAL_SHARED_LIBRARIES :=       \
         libbinder               \
@@ -31,7 +32,8 @@ LOCAL_SHARED_LIBRARIES :=       \
         libutils                \
         libui                   \
         libcutils               \
-        libstagefright_color_conversion
+        libstagefright_color_conversion \
+        libEGL
 
 ifneq ($(BUILD_WITHOUT_PV),true)
 LOCAL_SHARED_LIBRARIES += \

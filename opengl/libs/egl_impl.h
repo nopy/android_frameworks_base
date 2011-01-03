@@ -41,6 +41,10 @@ struct egl_connection_t
 
 EGLAPI EGLImageKHR egl_get_image_for_current_context(EGLImageKHR image);
 
+EGLAPI EGLImageKHR egl_get_image_for_implementation(
+        const char* vendor,
+        EGLImageKHR image);
+
 // ----------------------------------------------------------------------------
 }; // namespace android
 // ----------------------------------------------------------------------------

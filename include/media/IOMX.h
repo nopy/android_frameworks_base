@@ -24,6 +24,7 @@
 
 #include <OMX_Core.h>
 #include <OMX_Video.h>
+#include <ui/GraphicBuffer.h>
 
 #include "jni.h"
 
@@ -77,6 +78,11 @@ public:
     virtual status_t setConfig(
             node_id node, OMX_INDEXTYPE index,
             const void *params, size_t size) = 0;
+
+    virtual status_t useEGLImage(
+            node_id node, OMX_U32 port_index,
+            const sp<GraphicBuffer> &graphic_buffer,
+            buffer_id *buffer) = 0;
 
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,

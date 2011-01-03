@@ -27,17 +27,32 @@
 #include <media/stagefright/MediaDebug.h>
 #include <media/stagefright/MediaErrors.h>
 
+#include <ui/GraphicBufferMapper.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
 namespace android {
 
 struct BufferMeta {
     BufferMeta(const sp<IMemory> &mem, bool is_backup = false)
         : mMem(mem),
-          mIsBackup(is_backup) {
+          mIsBackup(is_backup),
+          mGraphicBuffer(NULL) {
     }
 
     BufferMeta(size_t size)
         : mSize(size),
-          mIsBackup(false) {
+          mIsBackup(false),
+          mGraphicBuffer(NULL) {
+    }
+
+    BufferMeta(sp<GraphicBuffer> graphic_buffer)
+        : mIsBackup(false),
+          mGraphicBuffer(graphic_buffer) {
+    }
+
+    sp<GraphicBuffer> GetGraphicBuffer() {
+        return mGraphicBuffer;
     }
 
     void CopyFromOMX(const OMX_BUFFERHEADERTYPE *header) {
@@ -64,6 +79,7 @@ private:
     sp<IMemory> mMem;
     size_t mSize;
     bool mIsBackup;
+    sp<GraphicBuffer> mGraphicBuffer;
 
     BufferMeta(const BufferMeta &);
     BufferMeta &operator=(const BufferMeta &);
@@ -73,6 +89,9 @@ private:
 OMX_CALLBACKTYPE OMXNodeInstance::kCallbacks = {
     &OnEvent, &OnEmptyBufferDone, &OnFillBufferDone
 };
+
+// static
+int OMXNodeInstance::sActiveEglImages = 0;
 
 OMXNodeInstance::OMXNodeInstance(
         OMX *owner, const sp<IOMXObserver> &observer)
@@ -240,6 +259,57 @@ status_t OMXNodeInstance::setConfig(
     return StatusFromOMXError(err);
 }
 
+status_t OMXNodeInstance::useEGLImage(
+        OMX_U32 portIndex, const sp<GraphicBuffer> &grbuffer,
+        OMX::buffer_id *buffer) {
+    Mutex::Autolock autoLock(mLock);
+
+    BufferMeta *buffer_meta = new BufferMeta(grbuffer);
+
+    OMX_BUFFERHEADERTYPE *header;
+
+    android_native_buffer_t* clientBuf = grbuffer->getNativeBuffer();
+
+    android::GraphicBufferMapper::get().registerBuffer(clientBuf->handle);
+    EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+
+    if (sActiveEglImages == 0)
+        eglInitialize(dpy, NULL, NULL);
+
+    EGLImageKHR image = eglCreateImageKHR(
+            dpy, EGL_NO_CONTEXT,
+            EGL_NATIVE_BUFFER_ANDROID, (EGLClientBuffer)clientBuf, 0);
+
+    if (image == EGL_NO_IMAGE_KHR) {
+        LOGE("eglCreateImageKHR() failed. err=0x%4x", eglGetError());
+        return NO_MEMORY;
+    }
+
+    OMX_ERRORTYPE err = OMX_UseEGLImage(
+            mHandle, &header, portIndex, buffer_meta,
+            image);
+
+    eglDestroyImageKHR(dpy, image);
+
+    if (err != OMX_ErrorNone) {
+        LOGE("OMX_UseEGLImage failed with error %d (0x%08x)", err, err);
+
+        delete buffer_meta;
+        buffer_meta = NULL;
+
+        *buffer = 0;
+
+        return UNKNOWN_ERROR;
+    }
+
+    *buffer = header;
+
+    addActiveBuffer(portIndex, *buffer);
+    sActiveEglImages++;
+
+    return OK;
+}
+
 status_t OMXNodeInstance::useBuffer(
         OMX_U32 portIndex, const sp<IMemory> &params,
         OMX::buffer_id *buffer) {
@@ -348,6 +418,19 @@ status_t OMXNodeInstance::freeBuffer(
     BufferMeta *buffer_meta = static_cast<BufferMeta *>(header->pAppPrivate);
 
     OMX_ERRORTYPE err = OMX_FreeBuffer(mHandle, portIndex, header);
+
+    sp<GraphicBuffer> graphicBuffer = buffer_meta->GetGraphicBuffer();
+    if (graphicBuffer.get()) {
+        android_native_buffer_t *nativeBuffer = graphicBuffer->getNativeBuffer();
+        android::GraphicBufferMapper::get().unregisterBuffer(nativeBuffer->handle);
+        sActiveEglImages--;
+        CHECK(sActiveEglImages >= 0);
+        if (sActiveEglImages == 0)
+        {
+            EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+            eglTerminate(dpy);
+        }
+    }
 
     delete buffer_meta;
     buffer_meta = NULL;

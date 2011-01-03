@@ -59,6 +59,10 @@ public:
             node_id node, OMX_INDEXTYPE index,
             const void *params, size_t size);
 
+    virtual status_t useEGLImage(
+            node_id node, OMX_U32 port_index, const sp<GraphicBuffer> &grbuffer,
+            buffer_id *buffer);
+
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,
             buffer_id *buffer);

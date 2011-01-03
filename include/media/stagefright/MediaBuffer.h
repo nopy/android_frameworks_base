@@ -23,6 +23,8 @@
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 
+#include <ui/GraphicBuffer.h>
+
 namespace android {
 
 class MediaBuffer;
@@ -47,6 +49,8 @@ public:
     MediaBuffer(void *data, size_t size);
 
     MediaBuffer(size_t size);
+
+    MediaBuffer(sp<GraphicBuffer> buffer);
 
     // Decrements the reference count and returns the buffer to its
     // associated MediaBufferGroup if the reference count drops to 0.

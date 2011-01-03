@@ -543,6 +543,35 @@ EGLImageKHR egl_get_image_for_current_context(EGLImageKHR image)
     return i->images[c->impl];
 }
 
+EGLImageKHR egl_get_image_for_implementation(const char* vendor,
+                                             EGLImageKHR image)
+{
+    ImageRef _i(image);
+    if (!_i.get() || image == EGL_NO_IMAGE_KHR || !vendor)
+        return EGL_NO_IMAGE_KHR;
+
+    egl_image_t const * const i = get_image(image);
+
+    egl_display_t * const dp = get_display(i->dpy);
+    if (!dp) return EGL_NO_IMAGE_KHR;
+
+    int impl = -1;
+    for (int i = 0 ; i<IMPL_NUM_IMPLEMENTATIONS ; i++) {
+        if (dp->disp[i].queryString.vendor != NULL &&
+            strcmp(dp->disp[i].queryString.vendor, vendor) == 0) {
+            impl = i;
+            break;
+        }
+    }
+
+    if (impl == -1) {
+        LOGE("No implementation found matching vendor %s", vendor);
+        return EGL_NO_IMAGE_KHR;
+    }
+
+    return i->images[impl];
+}
+
 // ----------------------------------------------------------------------------
 
 // this mutex protects:

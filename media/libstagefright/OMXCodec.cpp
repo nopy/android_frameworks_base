@@ -53,6 +53,8 @@
 #include <OMX_Component.h>
 
 #include "include/ThreadedSource.h"
+#include <ui/GraphicBuffer.h>
+#include <ui/PixelFormat.h>
 
 namespace android {
 
@@ -528,7 +530,8 @@ sp<MediaSource> OMXCodec::Create(
             LOGV("Successfully allocated OMX node '%s'", componentName);
 
             sp<OMXCodec> codec = new OMXCodec(
-                    omx, node, quirks,
+                    omx, node, flags & kUseEGLImage,
+                    quirks,
                     createEncoder, mime, componentName,
                     source);
 
@@ -709,6 +712,11 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         setMinBufferSize(kPortIndexOutput, 8192);  // XXX
     }
 
+    if (!strncmp(mComponentName, "OMX.Nvidia.", 11)
+        && mUseEGLImage != 0 ) {
+        setMinBufferCount(kPortIndexOutput, 6);
+    }
+
     initOutputFormat(meta);
 
     if ((flags & kClientNeedsFramebuffer)
@@ -771,6 +779,32 @@ void OMXCodec::setMinBufferSize(OMX_U32 portIndex, OMX_U32 size) {
         CHECK(def.nBufferSize >= size);
     }
 }
+
+void OMXCodec::setMinBufferCount(OMX_U32 portIndex, OMX_U32 count) {
+    OMX_PARAM_PORTDEFINITIONTYPE def;
+    InitOMXParams(&def);
+    def.nPortIndex = portIndex;
+
+    status_t err = mOMX->getParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    if (def.nBufferCountActual < count) {
+        def.nBufferCountActual = count;
+    }
+
+    err = mOMX->setParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    // Make sure the setting actually stuck.
+    CHECK(def.nBufferCountActual >= count);
+}
+
 
 status_t OMXCodec::setVideoPortFormatType(
         OMX_U32 portIndex,
@@ -1417,7 +1451,8 @@ status_t OMXCodec::setVideoOutputFormat(
 }
 
 OMXCodec::OMXCodec(
-        const sp<IOMX> &omx, IOMX::node_id node, uint32_t quirks,
+        const sp<IOMX> &omx, IOMX::node_id node, bool useEGLImage,
+        uint32_t quirks,
         bool isEncoder,
         const char *mime,
         const char *componentName,
@@ -1426,6 +1461,7 @@ OMXCodec::OMXCodec(
       mOMXLivesLocally(omx->livesLocally(getpid())),
       mNode(node),
       mQuirks(quirks),
+      mUseEGLImage(useEGLImage),
       mIsEncoder(isEncoder),
       mMIME(strdup(mime)),
       mComponentName(strdup(componentName)),
@@ -1600,20 +1636,46 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
             def.nBufferCountActual, def.nBufferSize,
             portIndex == kPortIndexInput ? "input" : "output");
 
-    size_t totalSize = def.nBufferCountActual * def.nBufferSize;
-    mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+    if (!(mUseEGLImage && portIndex == kPortIndexOutput)) {
+        size_t totalSize = def.nBufferCountActual * def.nBufferSize;
+        mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+    }
 
     for (OMX_U32 i = 0; i < def.nBufferCountActual; ++i) {
-        sp<IMemory> mem = mDealer[portIndex]->allocate(def.nBufferSize);
-        CHECK(mem.get() != NULL);
+        sp<IMemory> mem = NULL;
+        sp<GraphicBuffer> grBuffer = NULL;
+
+        if ( !mUseEGLImage || portIndex == kPortIndexInput) {
+            CHECK(mDealer[portIndex].get() != NULL);
+            mem = mDealer[portIndex]->allocate(def.nBufferSize);
+            CHECK(mem.get() != NULL);
+        }
 
         BufferInfo info;
         info.mData = NULL;
         info.mSize = def.nBufferSize;
 
         IOMX::buffer_id buffer;
-        if (portIndex == kPortIndexInput
-                && (mQuirks & kRequiresAllocateBufferOnInputPorts)) {
+        if (mUseEGLImage &&
+            portIndex == kPortIndexOutput) {
+
+            LOGV("Creating EGLImage %d x %d",
+                 (int)def.format.video.nFrameWidth,
+                 (int)def.format.video.nFrameHeight);
+
+            err = createGraphicBuffer(
+                    def.format.video.nFrameWidth,
+                    def.format.video.nFrameHeight,
+                    PIXEL_FORMAT_RGBA_8888,
+                    grBuffer);
+
+            CHECK(err == NO_ERROR);
+
+            err = mOMX->useEGLImage(
+                    mNode, portIndex, grBuffer, &buffer);
+
+        } else if (portIndex == kPortIndexInput
+                   && (mQuirks & kRequiresAllocateBufferOnInputPorts)) {
             if (mOMXLivesLocally) {
                 mem.clear();
 
@@ -1641,7 +1703,8 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         }
 
         if (err != OK) {
-            LOGE("allocate_buffer_with_backup failed");
+            LOGE("allocateBuffersOnPort(%s) failed",
+                 portIndex == kPortIndexInput ? "input" : "output");
             return err;
         }
 
@@ -1653,9 +1716,13 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         info.mOwnedByComponent = false;
         info.mMem = mem;
         info.mMediaBuffer = NULL;
+        info.mGraphicBuffer = NULL;
 
         if (portIndex == kPortIndexOutput) {
-            if (!(mOMXLivesLocally
+            if (mUseEGLImage) {
+                info.mMediaBuffer = new MediaBuffer(grBuffer);
+                info.mMediaBuffer->setObserver(this);
+            } else if (!(mOMXLivesLocally
                         && (mQuirks & kRequiresAllocateBufferOnOutputPorts)
                         && (mQuirks & kDefersOutputBufferAllocation))) {
                 // If the node does not fill in the buffer ptr at this time,
@@ -1673,6 +1740,30 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
     }
 
     // dumpPortStatus(portIndex);
+
+    return OK;
+}
+
+status_t OMXCodec::createGraphicBuffer(
+        int32_t w, int32_t h, PixelFormat format,
+        sp<GraphicBuffer>& grBuffer)
+{
+    status_t err;
+
+    grBuffer = new GraphicBuffer();
+    if (!grBuffer.get())
+        return NO_MEMORY;
+
+    err = grBuffer->reallocate(
+            w, h, format,
+            GraphicBuffer::USAGE_HW_TEXTURE | GraphicBuffer::USAGE_HW_2D);
+
+    if (err != NO_ERROR)
+    {
+        LOGE("Error %x in creating buffer (%dx%d, format %d)",
+             err, w, h, format);
+        return err;
+    }
 
     return OK;
 }
@@ -2344,6 +2435,7 @@ void OMXCodec::drainInputBuffers() {
 
 void OMXCodec::drainInputBuffer(BufferInfo *info) {
     CHECK_EQ(info->mOwnedByComponent, false);
+    CHECK(info->mMem != NULL);
 
     if (mSignalledEOS) {
         return;
