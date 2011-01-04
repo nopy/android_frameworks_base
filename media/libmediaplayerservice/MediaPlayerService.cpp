@@ -675,7 +675,11 @@ void MediaPlayerService::Client::disconnect()
 }
 
 static player_type getDefaultPlayerType() {
+#ifndef NO_OPENCORE
+    return PV_PLAYER;
+#else
     return STAGEFRIGHT_PLAYER;
+#endif
 }
 
 player_type getPlayerType(int fd, int64_t offset, int64_t length)
