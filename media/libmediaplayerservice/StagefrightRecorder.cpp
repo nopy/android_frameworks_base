@@ -937,6 +937,14 @@ status_t StagefrightRecorder::setupCameraSource() {
     CameraParameters params(mCamera->getParameters());
     params.setPreviewSize(mVideoWidth, mVideoHeight);
     params.setPreviewFrameRate(mFrameRate);
+
+    // set proper video frame size
+    LOGV("setupCameraSource::previous video-size is %s", params.get("video-size"));
+    char buffer[32];
+    sprintf(buffer, "%dx%d",mVideoWidth, mVideoHeight);
+    params.set("video-size", buffer);
+    LOGV("setupCameraSource::current video-size is %s", params.get("video-size"));
+
     String8 s = params.flatten();
     if (OK != mCamera->setParameters(s)) {
         LOGE("Could not change settings."
