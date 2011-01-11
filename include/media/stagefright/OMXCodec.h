@@ -160,6 +160,7 @@ private:
 
     Mutex mLock;
     Condition mAsyncCompletion;
+    uint8_t mOMXProfile;
 
     bool mPaused;
 
