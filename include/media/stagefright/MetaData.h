@@ -100,14 +100,14 @@ enum {
     kKeyValidSamples      = 'valD',  // int32_t
 
     kKeyIsUnreadable      = 'unre',  // bool (int32_t)
-    kKeyHeader            = 'header',
+    kKeyHeader            = 'hder',
     kKeyBufferType        = 'bufT',
 };
 
 enum {
     kTypeESDS        = 'esds',
     kTypeAVCC        = 'avcc',
-    kTypeHeader      = 'header',
+    kTypeHeader      = 'hder',
 };
 
 class MetaData : public RefBase {
