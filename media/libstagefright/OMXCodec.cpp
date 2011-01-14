@@ -154,6 +154,7 @@ static sp<MediaSource> InstantiateSoftwareCodec(
 
 static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_IMAGE_JPEG, "OMX.TI.JPEG.decode" },
+    //{ MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.Nvidia.mp3.decoder" },
 //    { MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.TI.MP3.decode" },
     { MEDIA_MIMETYPE_AUDIO_MPEG, "MP3Decoder" },
 //    { MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.PV.mp3dec" },
@@ -163,9 +164,11 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.TI.WBAMR.decode" },
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "AMRWBDecoder" },
 //    { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.PV.amrdec" },
+    //{ MEDIA_MIMETYPE_AUDIO_AAC, "OMX.Nvidia.aac.decoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.TI.AAC.decode" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACDecoder" },
 //    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.PV.aacdec" },
+    { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.Nvidia.wma.decoder" },
     { MEDIA_MIMETYPE_AUDIO_G711_ALAW, "G711Decoder" },
     { MEDIA_MIMETYPE_AUDIO_G711_MLAW, "G711Decoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.Nvidia.mp4.decode" },
@@ -188,6 +191,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.SEC.AVC.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
 //    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.PV.avcdec" },
+    {MEDIA_MIMETYPE_VIDEO_WMV, "OMX.Nvidia.vc1.decode" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
     { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
 };
@@ -498,7 +502,7 @@ sp<MediaSource> OMXCodec::Create(
 
         sp<MediaSource> softwareCodec = createEncoder?
             InstantiateSoftwareEncoder(componentName, source, meta):
-            InstantiateSoftwareCodec(componentName, source);
+        InstantiateSoftwareCodec(componentName, source);
 
         if (softwareCodec != NULL) {
             LOGV("Successfully allocated software codec '%s'", componentName);
@@ -511,18 +515,18 @@ sp<MediaSource> OMXCodec::Create(
         uint32_t quirks = getComponentQuirks(componentName, createEncoder);
 
         if (!createEncoder
-                && (quirks & kOutputBuffersAreUnreadable)
-                && (flags & kClientNeedsFramebuffer)) {
-            if (strncmp(componentName, "OMX.SEC.", 8)) {
-                // For OMX.SEC.* decoders we can enable a special mode that
-                // gives the client access to the framebuffer contents.
+            && (quirks & kOutputBuffersAreUnreadable)
+            && (flags & kClientNeedsFramebuffer)) {
+                if (strncmp(componentName, "OMX.SEC.", 8)) {
+                    // For OMX.SEC.* decoders we can enable a special mode that
+                    // gives the client access to the framebuffer contents.
 
-                LOGW("Component '%s' does not give the client access to "
-                     "the framebuffer contents. Skipping.",
-                     componentName);
+                    LOGW("Component '%s' does not give the client access to "
+                        "the framebuffer contents. Skipping.",
+                        componentName);
 
-                continue;
-            }
+                    continue;
+                }
         }
 
         status_t err = omx->allocateNode(componentName, observer, &node);
@@ -530,10 +534,10 @@ sp<MediaSource> OMXCodec::Create(
             LOGV("Successfully allocated OMX node '%s'", componentName);
 
             sp<OMXCodec> codec = new OMXCodec(
-                    omx, node, flags & kUseEGLImage,
-                    quirks,
-                    createEncoder, mime, componentName,
-                    source);
+                omx, node, flags & kUseEGLImage,
+                quirks,
+                createEncoder, mime, componentName,
+                source);
 
             observer->setCodec(codec);
 
@@ -544,6 +548,8 @@ sp<MediaSource> OMXCodec::Create(
             }
 
             LOGV("Failed to configure codec '%s'", componentName);
+
+
         }
     }
 
@@ -555,6 +561,11 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         uint32_t type;
         const void *data;
         size_t size;
+        if (meta->findData(kKeyHeader, &type, &data, &size)) {
+
+            LOGV ("Kkey header found .. SEND HEADER.");
+            addCodecSpecificData(data,size );
+        }
         if (meta->findData(kKeyESDS, &type, &data, &size)) {
             ESDS esds((const char *)data, size);
             CHECK_EQ(esds.InitCheck(), OK);
@@ -1351,6 +1362,8 @@ status_t OMXCodec::setVideoOutputFormat(
         compressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_H263, mime)) {
         compressionFormat = OMX_VIDEO_CodingH263;
+    }else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_WMV, mime)) {
+        compressionFormat = OMX_VIDEO_CodingWMV;
     } else {
         LOGE("Not a supported video mime type: %s", mime);
         CHECK(!"Should not be here. Not a supported video mime type.");
@@ -2526,6 +2539,7 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
         } else {
             CHECK(info->mSize >= specific->mSize);
             memcpy(info->mData, specific->mData, specific->mSize);
+            CODEC_LOGV  ("sending header data to decoder size %d",specific->mSize);
         }
 
         mNoMoreOutputData = false;
