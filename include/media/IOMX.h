@@ -79,11 +79,6 @@ public:
             node_id node, OMX_INDEXTYPE index,
             const void *params, size_t size) = 0;
 
-    virtual status_t useEGLImage(
-            node_id node, OMX_U32 port_index,
-            const sp<GraphicBuffer> &graphic_buffer,
-            buffer_id *buffer) = 0;
-
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,
             buffer_id *buffer) = 0;
@@ -142,6 +137,11 @@ public:
             size_t encodedWidth, size_t encodedHeight,
             size_t displayWidth, size_t displayHeight,
             int32_t rotationDegrees);
+
+    virtual status_t useEGLImage(
+            node_id node, OMX_U32 port_index,
+            const sp<GraphicBuffer> &graphic_buffer,
+            buffer_id *buffer) = 0;
 };
 
 struct omx_message {
