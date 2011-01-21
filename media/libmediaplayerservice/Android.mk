@@ -58,6 +58,11 @@ LOCAL_C_INCLUDES :=                                                 \
 	$(TOP)/frameworks/base/media/libstagefright/rtsp                \
         $(TOP)/external/tremolo/Tremolo
 
+ifeq ($(strip $(BOARD_USES_HW_MEDIAPLUGINS)),true)
+  LOCAL_SHARED_LIBRARIES += libhwmediaplugin
+  LOCAL_CFLAGS += -DUSE_BOARD_MEDIAPLUGIN
+endif
+
 LOCAL_MODULE:= libmediaplayerservice
 
 include $(BUILD_SHARED_LIBRARY)
