@@ -747,7 +747,6 @@ SuperSource::SuperSource(
         SF_CHK_ERR(m_hExtractor->sOMX->allocateNode(
                                        component,observer1,
                                        &(m_hExtractor->node)));
-        m_hExtractor->StreamCnt = 0;
         m_hExtractor->TrackCount = mTrackCount;
         m_hExtractor->StopCnt=0;
         mVidHd.nBuffer = NULL;
@@ -985,7 +984,7 @@ int  FillThisBuffer(void* pArgContext)
                                            sfQueueGetNumEntries()) > 0)
 
             {
-                LOGV("entries in the EmptyVideoMsgQ & sending to parser");
+                //LOGV("entries in the EmptyVideoMsgQ & sending to parser");
                 err = m_hExtractor->EmptyVideoMsgQ.sfQueueDeQ(&pBuffer);
 
                 err = m_hExtractor->sOMX->fillBuffer(
@@ -1002,7 +1001,7 @@ int  FillThisBuffer(void* pArgContext)
             if ((AudioEntries = m_hExtractor->EmptyAudioMsgQ.
                                               sfQueueGetNumEntries()) > 0)
             {
-                LOGV("some entries present in the EmptyAudioMsgQ and sending to parser");
+                //LOGV("some entries present in the EmptyAudioMsgQ and sending to parser");
                 err = m_hExtractor->EmptyAudioMsgQ.sfQueueDeQ(&pBuffer);
                 err = m_hExtractor->sOMX->fillBuffer(
                                           m_hExtractor->node,
@@ -1041,11 +1040,16 @@ status_t SuperSource::start(MetaData *params) {
 
     CHECK(mFormat->findInt32(kKeyMaxInputSize, &max_size));
 
+    if (m_hExtractor == NULL)
+    {
+        LOGV(" extractor need to allocate first ");
+        goto cleanup;
+    }
+
     mGroup->add_buffer(new MediaBuffer(max_size));
     m_hExtractor->seeking = false;
     m_hExtractor->mStopped = false;
     m_hExtractor->EOS = false;
-    m_hExtractor->StreamCnt++;
     m_hExtractor->fillwait = false;
 
     if (mFlagEnable == 0)
@@ -1175,7 +1179,7 @@ cleanup:
 status_t SuperSource::stop() {
     OMX_ERRORTYPE eError  = OMX_ErrorNone;
     int i;
-    LOGV(" SuperSource Stop");
+    LOGV(" SuperSource Stop--------");
     status_t err = OK;
     CHECK(mStarted);
     mStarted = false;
@@ -1187,85 +1191,90 @@ status_t SuperSource::stop() {
     delete mGroup;
     mGroup = NULL;
 
-    if (mFlagEnable == 0)
-    {
-        delete [ ]oInfo.pPath;
-        oInfo.pPath = NULL;
-        if (m_hExtractor->IsVideo)
-        {
-            delete [ ] mVidHd.nBuffer;
-            mVidHd.nBuffer = NULL;
-
-        }
-        if (m_hExtractor->IsAudio)
-        {
-            delete [ ] mAudHd.nBuffer;
-            mAudHd.nBuffer = NULL;
-        }
-    }
-    m_hExtractor->StreamCnt -- ;
-    if( m_hExtractor->StreamCnt != 0)
-        return OK;
     m_hExtractor->mStopped = true;
     // Signal the child thread to exit
     m_hExtractor->hsema.broadcast();
+    if  ((mFlagEnable == m_hExtractor->VideoIndex) && (m_hExtractor->IsVideo))
+    {
 
-    if (m_hExtractor->IsVideo)
-    {
-        err = m_hExtractor->sOMX->sendCommand(
-                                  m_hExtractor->node,
-                                  OMX_CommandFlush,0);
-    }
-    if (m_hExtractor->IsAudio)
-    {
-        err = m_hExtractor->sOMX->sendCommand(
-                                  m_hExtractor->node,
-                                  OMX_CommandFlush,1);
-    }
-    // waiting for parser flushsema
-    {
-        Mutex::Autolock autoLock(m_hExtractor->mMutex);
-        m_hExtractor->ParserFlushSema.wait( m_hExtractor->mMutex);
-    }
+        delete [ ] mVidHd.nBuffer;
+        mVidHd.nBuffer = NULL;
 
-    if (m_hExtractor->IsAudio)
-    {
-        LOGV("Freeing All Audio InputPort Buffers : %d",
-                                   m_hExtractor->NoOfAudioBuffers);
-        for (i = 0; i < m_hExtractor->NoOfAudioBuffers; i++)
+
+        err = m_hExtractor->sOMX->sendCommand(
+                                m_hExtractor->node,
+                                OMX_CommandFlush,0);
+
+        // waiting for parser flushsema
         {
-            err = m_hExtractor->sOMX->freeBuffer(
-                                      m_hExtractor->node,
-                                      1,
-                                      m_hExtractor->AudioinputBuffer[i]);
+            Mutex::Autolock autoLock(m_hExtractor->mMutex);
+            m_hExtractor->ParserFlushSema.wait( m_hExtractor->mMutex);
         }
-        m_hExtractor->EmptyAudioMsgQ.sfQueueDestroy();
-        m_hExtractor->FilledAudioMsgQ.sfQueueDestroy();
-    }
-    if (m_hExtractor->IsVideo)
-    {
+
+
         LOGV("Freeing All Video InputPort Buffers : %d",
-                                     m_hExtractor->NoOfVideoBuffers);
+            m_hExtractor->NoOfVideoBuffers);
         for (i = 0; i < m_hExtractor->NoOfVideoBuffers; i++)
         {
             err = m_hExtractor->sOMX->freeBuffer(
-                                      m_hExtractor->node,
-                                      0,
-                                      m_hExtractor->VideoinputBuffer[i]);
+                                    m_hExtractor->node,
+                                    0,
+                                    m_hExtractor->VideoinputBuffer[i]);
         }
         m_hExtractor->EmptyVideoMsgQ.sfQueueDestroy();
         m_hExtractor->FilledVideoMsgQ.sfQueueDestroy();
+        m_hExtractor->bVidDone = true;
+
     }
+    if  ((mFlagEnable == m_hExtractor->AudioIndex) && (m_hExtractor->IsAudio))
+    {
+        delete [ ] mAudHd.nBuffer;
+        mAudHd.nBuffer = NULL;
 
-    err = m_hExtractor->sOMX->sendCommand(
-                              m_hExtractor->node,
-                              OMX_CommandStateSet,
-                              OMX_StateIdle);
-    err = m_hExtractor->sOMX->freeNode(m_hExtractor->node);
 
-    LOGV ("Freeing extractor memroy");
-    delete m_hExtractor;
-    m_hExtractor = NULL;
+        err = m_hExtractor->sOMX->sendCommand(
+                                m_hExtractor->node,
+                                OMX_CommandFlush,1);
+
+        // waiting for parser flushsema
+        {
+            Mutex::Autolock autoLock(m_hExtractor->mMutex);
+            m_hExtractor->ParserFlushSema.wait( m_hExtractor->mMutex);
+        }
+
+        LOGV("Freeing All Audio InputPort Buffers : %d",
+            m_hExtractor->NoOfAudioBuffers);
+        for (i = 0; i < m_hExtractor->NoOfAudioBuffers; i++)
+        {
+            err = m_hExtractor->sOMX->freeBuffer(
+                                    m_hExtractor->node,
+                                    1,
+                                    m_hExtractor->AudioinputBuffer[i]);
+        }
+        m_hExtractor->EmptyAudioMsgQ.sfQueueDestroy();
+        m_hExtractor->FilledAudioMsgQ.sfQueueDestroy();
+        m_hExtractor->bAudDone = true;
+
+    }
+    if (( m_hExtractor->VideoIndex == -1 && m_hExtractor->bAudDone) ||
+        ( m_hExtractor->AudioIndex == -1 && m_hExtractor->bVidDone) ||
+        ( m_hExtractor->bVidDone && m_hExtractor->bAudDone))
+    {
+
+        delete [ ]oInfo.pPath;
+        oInfo.pPath = NULL;
+
+
+        err = m_hExtractor->sOMX->sendCommand(
+                                m_hExtractor->node,
+                                OMX_CommandStateSet,
+                                OMX_StateIdle);
+        err = m_hExtractor->sOMX->freeNode(m_hExtractor->node);
+
+        LOGV ("Freeing extractor memroy");
+        delete m_hExtractor;
+        m_hExtractor = NULL;
+    }
 
 
 cleanup:

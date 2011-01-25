@@ -75,7 +75,6 @@ typedef struct
     bool fillwait;
     uint32_t mess;
     uint32_t Count;
-    uint32_t StreamCnt;
     uint32_t TrackCount;
     uint32_t StopCnt;
     uint32_t NoOfVideoBuffers;
@@ -86,6 +85,8 @@ typedef struct
     bool EOS;
     bool IsVideo;
     bool IsAudio;
+    bool bAudDone;
+    bool bVidDone;
     void (*msgCallback)(void *hExtractor, const omx_message &msg);
 }SuperExtractorData;
 
