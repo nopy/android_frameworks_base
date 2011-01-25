@@ -143,6 +143,45 @@ public:
     virtual bool        previewEnabled() = 0;
 
     /**
+     * Request the camera hal to store meta data or real YUV data in
+     * the video buffers send out via CAMERA_MSG_VIDEO_FRRAME for a
+     * recording session. If it is not called, the default camera
+     * hal behavior is to store real YUV data in the video buffers.
+     *
+     * This method should be called before startRecording() in order
+     * to be effective.
+     *
+     * If meta data is stored in the video buffers, it is up to the
+     * receiver of the video buffers to interpret the contents and
+     * to find the actual frame data with the help of the meta data
+     * in the buffer. How this is done is outside of the scope of
+     * this method.
+     *
+     * Some camera hal may not support storing meta data in the video
+     * buffers, but all camera hal should support storing real YUV data
+     * in the video buffers. If the camera hal does not support storing
+     * the meta data in the video buffers when it is requested to do
+     * do, INVALID_OPERATION must be returned. It is very useful for
+     * the camera hal to pass meta data rather than the actual frame
+     * data directly to the video encoder, since the amount of the
+     * uncompressed frame data can be very large if video size is large.
+     *
+     * @param enable if true to instruct the camera hal to store
+     *      meta data in the video buffers; false to instruct
+     *      the camera hal to store real YUV data in the video
+     *      buffers.
+     *
+     * @return OK on success.
+     */
+    virtual status_t    storeMetaDataInBuffers(bool enable) {
+                            return enable? INVALID_OPERATION: OK;
+                        }
+
+    virtual bool        isMetaDataStoredInVideoBuffers() {
+                            return false;
+                        }
+
+    /**
      * Start record mode. When a record image is available a CAMERA_MSG_VIDEO_FRAME
      * message is sent with the corresponding frame. Every record frame must be released
      * by calling releaseRecordingFrame().

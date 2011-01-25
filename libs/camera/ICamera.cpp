@@ -45,6 +45,8 @@ enum {
     STOP_RECORDING,
     RECORDING_ENABLED,
     RELEASE_RECORDING_FRAME,
+    STORE_META_DATA_IN_BUFFERS,
+    IS_META_DATA_STORED_IN_BUFFERS,
 };
 
 class BpCamera: public BpInterface<ICamera>
@@ -131,6 +133,25 @@ public:
         data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
         data.writeStrongBinder(mem->asBinder());
         remote()->transact(RELEASE_RECORDING_FRAME, data, &reply);
+    }
+
+    status_t storeMetaDataInBuffers(bool enabled)
+    {
+        LOGV("storeMetaDataInBuffers: %s", enabled? "true": "false");
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        data.writeInt32(enabled);
+        remote()->transact(STORE_META_DATA_IN_BUFFERS, data, &reply);
+        return reply.readInt32();
+    }
+
+    bool isMetaDataStoredInVideoBuffers()
+    {
+        LOGV("isMetaDataStoredInVideoBuffers");
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        remote()->transact(IS_META_DATA_STORED_IN_BUFFERS, data, &reply);
+        return (bool)reply.readInt32();
     }
 
     // check preview state
@@ -298,6 +319,19 @@ status_t BnCamera::onTransact(
             CHECK_INTERFACE(ICamera, data, reply);
             sp<IMemory> mem = interface_cast<IMemory>(data.readStrongBinder());
             releaseRecordingFrame(mem);
+            return NO_ERROR;
+        } break;
+        case STORE_META_DATA_IN_BUFFERS: {
+            LOGV("STORE_META_DATA_IN_BUFFERS");
+            CHECK_INTERFACE(ICamera, data, reply);
+            bool enabled = data.readInt32();
+            reply->writeInt32(storeMetaDataInBuffers(enabled));
+            return NO_ERROR;
+        } break;
+        case IS_META_DATA_STORED_IN_BUFFERS: {
+            LOGV("IS_META_DATA_STORED_IN_BUFFERS");
+            CHECK_INTERFACE(ICamera, data, reply);
+            reply->writeInt32(isMetaDataStoredInVideoBuffers());
             return NO_ERROR;
         } break;
         case PREVIEW_ENABLED: {

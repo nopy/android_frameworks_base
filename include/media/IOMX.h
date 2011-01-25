@@ -142,6 +142,9 @@ public:
             node_id node, OMX_U32 port_index,
             const sp<GraphicBuffer> &graphic_buffer,
             buffer_id *buffer) = 0;
+
+    virtual status_t storeMetaDataInBuffers(
+            node_id node, OMX_U32 port_index, OMX_BOOL enable) = 0;
 };
 
 struct omx_message {

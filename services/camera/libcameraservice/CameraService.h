@@ -92,6 +92,8 @@ private:
         virtual status_t        startPreview();
         virtual void            stopPreview();
         virtual bool            previewEnabled();
+        virtual status_t        storeMetaDataInBuffers(bool enabled);
+        virtual bool            isMetaDataStoredInVideoBuffers();
         virtual status_t        startRecording();
         virtual void            stopRecording();
         virtual bool            recordingEnabled();

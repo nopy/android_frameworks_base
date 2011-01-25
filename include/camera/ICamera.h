@@ -90,6 +90,12 @@ public:
 
     // send command to camera driver
     virtual status_t        sendCommand(int32_t cmd, int32_t arg1, int32_t arg2) = 0;
+
+    // tell the camera hal to store meta data or real YUV data in video buffers.
+    virtual status_t        storeMetaDataInBuffers(bool enabled) = 0;
+
+    // query the camera if it stores meta data in video buffers.
+    virtual bool            isMetaDataStoredInVideoBuffers() = 0;
 };
 
 // ----------------------------------------------------------------------------

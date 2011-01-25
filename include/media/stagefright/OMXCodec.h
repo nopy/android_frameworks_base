@@ -39,6 +39,9 @@ struct OMXCodec : public MediaSource,
         // data for example for thumbnail extraction.
         kClientNeedsFramebuffer  = 4,
         kUseEGLImage = 8,
+
+        // Store meta data in video buffers
+        kStoreMetaDataInVideoBuffers = 32,
     };
     static sp<MediaSource> Create(
             const sp<IOMX> &omx,
@@ -171,6 +174,7 @@ private:
     OMXCodec(const sp<IOMX> &omx, IOMX::node_id node, bool useEGLImage,
              uint32_t quirks, bool isEncoder, const char *mime,
              const char *componentName, const sp<MediaSource> &source);
+    bool mIsMetaDataStoredInVideoBuffers;
 
     void addCodecSpecificData(const void *data, size_t size);
     void clearCodecSpecificData();
