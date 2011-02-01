@@ -53,6 +53,8 @@ struct OMXNodeInstance {
             OMX_U32 portIndex, const sp<GraphicBuffer> &grbuffer,
             OMX::buffer_id *buffer);
 
+    status_t storeMetaDataInBuffers(OMX_U32 portIndex, OMX_BOOL enable);
+
     status_t useBuffer(
             OMX_U32 portIndex, const sp<IMemory> &params,
             OMX::buffer_id *buffer);

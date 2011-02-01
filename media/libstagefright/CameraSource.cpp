@@ -145,6 +145,8 @@ CameraSource::CameraSource(const sp<Camera> &camera)
     CameraParameters params(s);
     params.getPreviewSize(&width, &height);
 
+    (void)mCamera->storeMetaDataInBuffers(true);
+
     // Calculate glitch duraton threshold based on frame rate
     int32_t frameRate = params.getPreviewFrameRate();
     int64_t glitchDurationUs = (1000000LL / frameRate);

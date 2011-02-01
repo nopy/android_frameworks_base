@@ -561,11 +561,18 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         uint32_t type;
         const void *data;
         size_t size;
+
         if (meta->findData(kKeyHeader, &type, &data, &size)) {
 
             LOGV ("Kkey header found .. SEND HEADER.");
             addCodecSpecificData(data,size );
         }
+
+        mIsMetaDataStoredInVideoBuffers = false;
+        if (!strcasecmp("OMX.Nvidia.h264.encoder", mComponentName)) {
+            mIsMetaDataStoredInVideoBuffers = true;
+        }
+
         if (meta->findData(kKeyESDS, &type, &data, &size)) {
             ESDS esds((const char *)data, size);
             CHECK_EQ(esds.InitCheck(), OK);
@@ -1651,6 +1658,14 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         return err;
     }
 
+    if (mIsMetaDataStoredInVideoBuffers && portIndex == kPortIndexInput) {
+        err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexInput, OMX_TRUE);
+        if (err != OK) {
+            LOGE("Storing meta data in video buffers is not supported");
+            return err;
+        }
+    }
+
     CODEC_LOGI("allocating %lu buffers of size %lu on %s port",
             def.nBufferCountActual, def.nBufferSize,
             portIndex == kPortIndexInput ? "input" : "output");
@@ -2643,7 +2658,7 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
             OMX_BUFFERHEADERTYPE *header = (OMX_BUFFERHEADERTYPE *) info->mBuffer;
             header->pBuffer = (OMX_U8 *) srcBuffer->data() + srcBuffer->range_offset();
         } else {
-            if (mQuirks & kStoreMetaDataInInputVideoBuffers) {
+            if (mIsMetaDataStoredInVideoBuffers) {
                 releaseBuffer = false;
                 info->mMediaBuffer = srcBuffer;
             }

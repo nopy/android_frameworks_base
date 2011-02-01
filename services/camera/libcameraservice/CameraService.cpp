@@ -741,6 +741,34 @@ void CameraService::Client::releaseRecordingFrame(const sp<IMemory>& mem) {
     mHardware->releaseRecordingFrame(mem);
 }
 
+status_t CameraService::Client::storeMetaDataInBuffers(bool enabled)
+{
+    LOGI("storeMetaDataInBuffers: %s", enabled? "true": "false");
+    Mutex::Autolock lock(mLock);
+    //if (checkPid() != NO_ERROR) return UNKNOWN_ERROR;
+
+    if (mHardware == 0)
+    {
+      LOGE("mHardware is NULL, returning.");
+      return UNKNOWN_ERROR;
+    }
+    return mHardware->storeMetaDataInBuffers(enabled);
+}
+
+bool CameraService::Client::isMetaDataStoredInVideoBuffers()
+{
+    LOGI("isMetaDataStoredInVideoBuffers");
+    Mutex::Autolock lock(mLock);
+    //if (checkPid() != NO_ERROR) return UNKNOWN_ERROR;
+
+    if (mHardware == 0)
+    {
+      LOGE("mHardware is NULL, returning.");
+      return UNKNOWN_ERROR;
+    }
+    return mHardware->isMetaDataStoredInVideoBuffers();
+}
+
 bool CameraService::Client::previewEnabled() {
     LOG1("previewEnabled (pid %d)", getCallingPid());
 

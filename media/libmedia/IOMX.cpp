@@ -32,6 +32,7 @@ enum {
     CREATE_RENDERER,
     OBSERVER_ON_MSG,
     RENDERER_RENDER,
+    STORE_META_DATA_IN_BUFFERS,
 };
 
 sp<IOMXRenderer> IOMX::createRenderer(
@@ -394,6 +395,19 @@ public:
 
         return interface_cast<IOMXRenderer>(reply.readStrongBinder());
     }
+
+    virtual status_t storeMetaDataInBuffers(
+            node_id node, OMX_U32 port_index, OMX_BOOL enable) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeInt32((uint32_t)enable);
+        remote()->transact(STORE_META_DATA_IN_BUFFERS, data, &reply);
+
+        status_t err = reply.readInt32();
+        return err;
+    }
 };
 
 IMPLEMENT_META_INTERFACE(OMX, "android.hardware.IOMX");
@@ -610,6 +624,20 @@ status_t BnOMX::onTransact(
             if (err == OK) {
                 reply->writeIntPtr((intptr_t)buffer);
             }
+
+            return NO_ERROR;
+        }
+
+        case STORE_META_DATA_IN_BUFFERS:
+        {
+            CHECK_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            OMX_BOOL enable = (OMX_BOOL)data.readInt32();
+
+            status_t err = storeMetaDataInBuffers(node, port_index, enable);
+            reply->writeInt32(err);
 
             return NO_ERROR;
         }

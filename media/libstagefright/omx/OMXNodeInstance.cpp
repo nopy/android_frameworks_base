@@ -24,6 +24,7 @@
 #include <OMX_Component.h>
 
 #include <binder/IMemory.h>
+#include <media/stagefright/HardwareAPI.h>
 #include <media/stagefright/MediaDebug.h>
 #include <media/stagefright/MediaErrors.h>
 
@@ -308,6 +309,37 @@ status_t OMXNodeInstance::useEGLImage(
     sActiveEglImages++;
 
     return OK;
+}
+
+status_t OMXNodeInstance::storeMetaDataInBuffers(
+        OMX_U32 portIndex,
+        OMX_BOOL enable) {
+    Mutex::Autolock autolock(mLock);
+
+    OMX_INDEXTYPE index;
+    OMX_STRING name = const_cast<OMX_STRING>(
+           "OMX.google.android.index.storeMetaDataInBuffers");
+
+    OMX_ERRORTYPE err = OMX_GetExtensionIndex(mHandle, name, &index);
+    if (err != OMX_ErrorNone) {
+        LOGE("OMX_GetExtensionIndex %s failed", name);
+        return StatusFromOMXError(err);
+    }
+
+    StoreMetaDataInBuffersParams params;
+    memset(&params, 0, sizeof(params));
+    params.nSize = sizeof(params);
+
+    // Version: 1.0.0.0
+    params.nVersion.s.nVersionMajor = 1;
+
+    params.nPortIndex = portIndex;
+    params.bStoreMetaData = enable;
+    if ((err = OMX_SetParameter(mHandle, index, &params)) != OMX_ErrorNone) {
+        LOGE("OMX_SetParameter() failed for StoreMetaDataInBuffers: 0x%08x", err);
+        return UNKNOWN_ERROR;
+    }
+    return err;
 }
 
 status_t OMXNodeInstance::useBuffer(
