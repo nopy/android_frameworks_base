@@ -63,6 +63,10 @@ ifeq ($(strip $(BOARD_USES_HW_MEDIAPLUGINS)),true)
   LOCAL_CFLAGS += -DUSE_BOARD_MEDIAPLUGIN
 endif
 
+ifeq ($(strip $(BOARD_USES_HW_MEDIARECORDER)),true)
+    LOCAL_SHARED_LIBRARIES += libhwmediarecorder
+    LOCAL_CFLAGS += -DUSE_BOARD_MEDIARECORDER
+endif
 LOCAL_MODULE:= libmediaplayerservice
 
 include $(BUILD_SHARED_LIBRARY)
