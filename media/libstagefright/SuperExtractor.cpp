@@ -1303,7 +1303,9 @@ status_t SuperSource::read(
         OMX_TIME_CONFIG_TIMESTAMPTYPE TimeStamp;
         ReadOptions::SeekMode mode;
 
-        if (options && options->getSeekTo(&seekTimeUs,&mode) ) {
+        if (options && options->getSeekTo(&seekTimeUs,&mode) &&
+            (mFlagEnable == m_hExtractor->VideoIndex || ( !(m_hExtractor->IsVideo))) )
+        {
             m_hExtractor->seeking = true;
             LOGV("SEEKED  to position %lld",seekTimeUs);
             TimeStamp.nTimestamp = (OMX_TICKS)(seekTimeUs);
