@@ -326,6 +326,7 @@ CameraService::Client::Client(const sp<CameraService>& cameraService,
     mOrientationChanged = false;
     cameraService->setCameraBusy(cameraId);
     cameraService->loadSound();
+    mOverlayFormat = OVERLAY_FORMAT_DEFAULT;
     LOG1("Client::Client X (pid %d)", callingPid);
 }
 
@@ -565,7 +566,7 @@ status_t CameraService::Client::setOverlay() {
             // wait in the createOverlay call if the previous overlay is in the
             // process of being destroyed.
             for (int retry = 0; retry < 50; ++retry) {
-                mOverlayRef = mSurface->createOverlay(w, h, OVERLAY_FORMAT_DEFAULT,
+                mOverlayRef = mSurface->createOverlay(w, h, mOverlayFormat,
                                                       mOrientation);
                 if (mOverlayRef != 0) break;
                 LOGW("Overlay create failed - retrying");
@@ -1159,6 +1160,17 @@ void CameraService::Client::handleCompressedPicture(const sp<IMemory>& mem) {
     }
 }
 
+status_t CameraService::Client::setOverlayFormat(int format)
+{
+    LOGV("setOverlayFormat %d\n", format);
+
+    if ((format >= OVERLAY_FORMAT_RGBA_8888) &&
+        (format <= OVERLAY_FORMAT_DEFAULT_DUAL_SECONDARY)) {
+        mOverlayFormat = format;
+        return OK;
+    } else
+        return INVALID_OPERATION;
+}
 
 void CameraService::Client::handleGenericNotify(int32_t msgType,
     int32_t ext1, int32_t ext2) {

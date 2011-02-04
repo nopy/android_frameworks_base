@@ -96,6 +96,9 @@ public:
 
     // query the camera if it stores meta data in video buffers.
     virtual bool            isMetaDataStoredInVideoBuffers() = 0;
+
+    // set overlay format for preview
+    virtual status_t        setOverlayFormat(int format) = 0;
 };
 
 // ----------------------------------------------------------------------------

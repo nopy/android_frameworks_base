@@ -383,6 +383,14 @@ void Camera::dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, const sp<
     }
 }
 
+status_t Camera::setOverlayFormat(int format)
+{
+    LOGV("setOverlayFormat: %d", format);
+    sp <ICamera> c = mCamera;
+    if (c == 0) return NO_INIT;
+    return c->setOverlayFormat(format);
+}
+
 void Camera::binderDied(const wp<IBinder>& who) {
     LOGW("ICamera died");
     notifyCallback(CAMERA_MSG_ERROR, CAMERA_ERROR_SERVER_DIED, 0);
