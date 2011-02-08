@@ -48,6 +48,7 @@
 #include <surfaceflinger/ISurface.h>
 
 #include <media/stagefright/foundation/ALooper.h>
+#define FRAME_DROP_FREQ 7
 
 namespace android {
 
@@ -1247,12 +1248,15 @@ void AwesomePlayer::onVideoEvent() {
     if (latenessUs > 40000) {
         // We're more than 40ms late.
         LOGV("we're late by %lld us (%.2f secs)", latenessUs, latenessUs / 1E6);
+       if ( mSinceLastDropped > FRAME_DROP_FREQ) {
 
+        mSinceLastDropped = 0;
         mVideoBuffer->release();
         mVideoBuffer = NULL;
 
         postVideoEvent_l();
         return;
+        }
     }
 
     if (latenessUs < -10000) {
@@ -1269,6 +1273,7 @@ void AwesomePlayer::onVideoEvent() {
     }
 
     if (mVideoRenderer != NULL) {
+        mSinceLastDropped++;
         mVideoRenderer->render(mVideoBuffer);
     }
 
