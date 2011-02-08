@@ -104,6 +104,8 @@ private:
         virtual status_t        setParameters(const String8& params);
         virtual String8         getParameters() const;
         virtual status_t        sendCommand(int32_t cmd, int32_t arg1, int32_t arg2);
+        // set overlay format for preview
+        virtual status_t        setOverlayFormat(int format);
     private:
         friend class CameraService;
                                 Client(const sp<CameraService>& cameraService,
@@ -199,6 +201,7 @@ private:
         // This function keeps trying to grab mLock, or give up if the message
         // is found to be disabled. It returns true if mLock is grabbed.
         bool                    lockIfMessageWanted(int32_t msgType);
+        int                     mOverlayFormat;
     };
 };
 

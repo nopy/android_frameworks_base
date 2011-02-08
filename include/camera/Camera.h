@@ -225,6 +225,9 @@ public:
 
     sp<ICamera>         remote();
 
+    // set overlay format for preview
+    status_t            setOverlayFormat(int format);
+
 private:
                         Camera();
                         Camera(const Camera&);

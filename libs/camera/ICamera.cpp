@@ -47,6 +47,7 @@ enum {
     RELEASE_RECORDING_FRAME,
     STORE_META_DATA_IN_BUFFERS,
     IS_META_DATA_STORED_IN_BUFFERS,
+    SET_OVERLAY_FORMAT,
 };
 
 class BpCamera: public BpInterface<ICamera>
@@ -260,6 +261,15 @@ public:
         remote()->transact(UNLOCK, data, &reply);
         return reply.readInt32();
     }
+    status_t setOverlayFormat(int format)
+    {
+        LOGV("setOverlayFormat: %d", format);
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        data.writeInt32(format);
+        remote()->transact(SET_OVERLAY_FORMAT, data, &reply);
+        return reply.readInt32();
+    }
 };
 
 IMPLEMENT_META_INTERFACE(Camera, "android.hardware.ICamera");
@@ -400,6 +410,13 @@ status_t BnCamera::onTransact(
         case UNLOCK: {
             CHECK_INTERFACE(ICamera, data, reply);
             reply->writeInt32(unlock());
+            return NO_ERROR;
+        } break;
+        case SET_OVERLAY_FORMAT: {
+            LOGV("SET_OVERLAY_FORMAT");
+            CHECK_INTERFACE(ICamera, data, reply);
+            int format = data.readInt32();
+            reply->writeInt32(setOverlayFormat(format));
             return NO_ERROR;
         } break;
         default:
