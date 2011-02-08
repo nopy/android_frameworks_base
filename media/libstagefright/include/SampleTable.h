@@ -46,6 +46,8 @@ public:
 
     status_t setTimeToSampleParams(off_t data_offset, size_t data_size);
 
+    status_t setCompositionTimeToSampleParams(off_t data_offset, size_t data_size);
+
     status_t setSyncSampleParams(off_t data_offset, size_t data_size);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -103,6 +105,9 @@ private:
 
     uint32_t mTimeToSampleCount;
     uint32_t *mTimeToSample;
+
+    uint32_t mCompositionTimeToSampleCount;
+    int32_t *mCompositionTimeToSample;
 
     off_t mSyncSampleOffset;
     uint32_t mNumSyncSamples;
