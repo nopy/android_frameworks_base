@@ -156,6 +156,13 @@ case omx_message::EVENT:
             hExtractor->hvideosignal.broadcast();
             hExtractor->haudiosignal.broadcast();
             break;
+
+        case OMX_EventError:
+            LOGV("Got OMX_EventError event\n");
+            hExtractor->bErrorOccured = true;
+            hExtractor->hvideosignal.broadcast();
+            hExtractor->haudiosignal.broadcast();
+            break;
         }
         break;
     }
@@ -309,17 +316,7 @@ cleanup:
     if (err != OK)
     {
         LOGV("Error in SuperExtractor Constructor");
-        delete [ ] oInfo.pPath;
-        oInfo.pPath = NULL;
-        if (pBuffer)
-        {
-            delete [ ]pBuffer;
-            pBuffer = NULL;
-        }
-        err = Extractor->sOMX->freeNode(Extractor->node);
-        CHECK_EQ(err,OK);
-        delete Extractor;
-        Extractor = NULL;
+        Extractor->bErrorOccured = true;
     }
     else
     {
@@ -352,6 +349,13 @@ sp<MetaData> SuperExtractor::getMetaData() {
     status_t err = OK;
 
     LOGV ("entered SuperExtractor GetMetaData");
+
+    if ( Extractor->bErrorOccured )
+    {
+        LOGV ("error occured2  true");
+        err = UNKNOWN_ERROR;
+        goto cleanup;
+    }
     SF_CHK_ERR(Extractor->sOMX->getExtensionIndex(
                                 Extractor->node,
                                 NVX_INDEX_CONFIG_QUERYMETADATA,
@@ -393,8 +397,6 @@ sp<MetaData> SuperExtractor::getMetaData() {
 
     if (OK != err ||  md.nValueLen == 0)
     {
-        delete [ ]pBuffer;
-        pBuffer = NULL;
         return mFileMetaData;
     }
 
@@ -413,7 +415,13 @@ size_t SuperExtractor::countTracks() {
     OMX_INDEXTYPE eParam;
     status_t err =OK;
 
-    LOGV("In Count Tracks");
+    LOGV("In Count Tracks ");
+    if ( Extractor->bErrorOccured )
+    {
+        LOGV ("error occured true");
+        err = UNKNOWN_ERROR;
+        goto cleanup;
+    }
     SF_CHK_ERR(Extractor->sOMX->getExtensionIndex(
                                  Extractor->node,
                                  NVX_INDEX_PARAM_STREAMCOUNT,
@@ -449,6 +457,12 @@ sp<MetaData> SuperExtractor::getTrackMetaData(
         int i;
         status_t err = OK;
         LOGV("get track metadata ");
+        if ( Extractor->bErrorOccured )
+        {
+            LOGV ("error occured3  true");
+            err = UNKNOWN_ERROR;
+            goto cleanup;
+        }
         SF_CHK_ERR(Extractor->sOMX->getExtensionIndex(
                                     Extractor->node,
                                     NVX_INDEX_PARAM_DURATION,
@@ -873,6 +887,9 @@ SuperSource::SuperSource(
             const char *mime;
             sp<MetaData> meta =mFormat;
             CHECK(meta->findCString(kKeyMIMEType, &mime));
+            INIT_PARAM(mAudHd);
+            mAudHd.nBufferlen = 1024;
+            mAudHd.nBuffer = new char[mAudHd.nBufferlen];
 
             if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC))
             {
@@ -906,9 +923,6 @@ SuperSource::SuperSource(
                             || !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_WMA))
             {
                 sp<MetaData> meta =mFormat;
-                INIT_PARAM(mAudHd);
-                mAudHd.nBufferlen = 1024;
-                mAudHd.nBuffer = new char[mAudHd.nBufferlen];
                 SF_CHK_ERR(m_hExtractor->sOMX->getConfig(
                                                 m_hExtractor->node,
                                                 eParam,&mAudHd,
@@ -920,7 +934,6 @@ SuperSource::SuperSource(
             }
             if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG))
             {
-
                 // enable/Disable mp3TS
                 SF_CHK_ERR(m_hExtractor->sOMX->getExtensionIndex(
                                                m_hExtractor->node,
@@ -982,7 +995,6 @@ int  FillThisBuffer(void* pArgContext)
         {
             if ( (VideoEntries = m_hExtractor->EmptyVideoMsgQ.
                                            sfQueueGetNumEntries()) > 0)
-
             {
                 //LOGV("entries in the EmptyVideoMsgQ & sending to parser");
                 err = m_hExtractor->EmptyVideoMsgQ.sfQueueDeQ(&pBuffer);
@@ -1330,6 +1342,7 @@ status_t SuperSource::read(
             if ((seekTimeUs == 0) && (m_hExtractor->IsAudio))
             {
                 LOGV ("Audio is seeking to 0 hence send the header buffer again ");
+                mFirstBuffer = true;
                 mFormat->setData(kKeyHeader, kTypeHeader,
                                    mAudHd.nBuffer,mAudHd.nBufferlen);
             }
@@ -1377,6 +1390,15 @@ status_t SuperSource::read(
         //NORMAL START
         CHECK(mStarted);
         *out = NULL;
+
+        if (m_hExtractor->EOS ||m_hExtractor->bErrorOccured)
+        {
+            mEOS = 1;
+            m_hExtractor->mStopped = true;
+            m_hExtractor->StopCnt++;
+            m_hExtractor->hsema.broadcast();
+            return ERROR_END_OF_STREAM;
+        }
         if (mFlagEnable == m_hExtractor->VideoIndex)
         {
             while(m_hExtractor->FilledVideoMsgQ.sfQueueGetNumEntries() < 1)
@@ -1398,14 +1420,7 @@ status_t SuperSource::read(
             mWait = true;
         }
 
-        if (m_hExtractor->EOS)
-        {
-            mEOS = 1;
-            m_hExtractor->mStopped = true;
-            m_hExtractor->StopCnt++;
-            m_hExtractor->hsema.broadcast();
-            return ERROR_END_OF_STREAM;
-        }
+
 
         err = mGroup->acquire_buffer(&mBuffer);
         LOGV ("acquire buffer return status %x",err );
@@ -1565,7 +1580,7 @@ bool SniffSuper (
                 (!memcmp(header +8, "AVIX", 4)))
             {
                 *mimeType = MEDIA_MIMETYPE_CONTAINER_AVI;
-                *confidence = 0.1;
+                *confidence = 1.0;
                 LOGV ("avi is identified /////");
                 return true;
             }
@@ -1573,7 +1588,7 @@ bool SniffSuper (
         else if (!memcmp(header, ASF_Header_GUID, 16))
         {
             *mimeType = MEDIA_MIMETYPE_CONTAINER_ASF;
-            *confidence = 0.1;
+            *confidence = 1.0;
             LOGV ("asf is identified /////");
             return true;
         }

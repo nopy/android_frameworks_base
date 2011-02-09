@@ -87,6 +87,7 @@ typedef struct
     bool IsAudio;
     bool bAudDone;
     bool bVidDone;
+    bool bErrorOccured;
     void (*msgCallback)(void *hExtractor, const omx_message &msg);
 }SuperExtractorData;
 
