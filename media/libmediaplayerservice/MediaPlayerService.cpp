@@ -763,7 +763,7 @@ static sp<MediaPlayerBase> createPlayer(player_type playerType, void* cookie,
     switch (playerType) {
 #ifndef NO_OPENCORE
         case PV_PLAYER:
-            LOGV(" create PVPlayer");
+            LOGE(" create PVPlayer");
             p = new PVPlayer();
             break;
 #endif
