@@ -3660,6 +3660,8 @@ void OMXCodec::dumpPortStatus(OMX_U32 portIndex) {
 void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
     mOutputFormat = new MetaData;
     mOutputFormat->setCString(kKeyDecoderComponent, mComponentName);
+    mOutputFormat->setInt32(kKeyNodeId, (int32_t)mNode);
+
     if (mIsEncoder) {
         int32_t timeScale;
         if (inputFormat->findInt32(kKeyTimeScale, &timeScale)) {

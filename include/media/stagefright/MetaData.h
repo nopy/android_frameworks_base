@@ -102,6 +102,7 @@ enum {
     kKeyIsUnreadable      = 'unre',  // bool (int32_t)
     kKeyHeader            = 'hder',
     kKeyBufferType        = 'bufT',
+    kKeyNodeId            = 'node',  // int32_t
 };
 
 enum {
