@@ -133,6 +133,11 @@ sp<Camera> Camera::connect(int cameraId)
     return c;
 }
 
+sp<Camera> Camera::connect() 
+{
+	return connect(0) ;
+}
+
 void Camera::disconnect()
 {
     LOGV("disconnect");

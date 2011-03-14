@@ -158,6 +158,7 @@ public:
     static  status_t    getCameraInfo(int cameraId,
                                       struct CameraInfo* cameraInfo);
     static  sp<Camera>  connect(int cameraId);
+    static  sp<Camera>  connect();
                         ~Camera();
             void        init();
 
