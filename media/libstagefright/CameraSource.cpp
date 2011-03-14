@@ -85,6 +85,10 @@ static int32_t getColorFormat(const char* colorFormat) {
         return OMX_COLOR_FormatYUV420SemiPlanar;
     }
 
+    if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV420P)) {
+        return OMX_COLOR_FormatYUV420Planar;
+    }
+
     if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_YUV422I)) {
         return OMX_COLOR_FormatYCbYCr;
     }
@@ -140,6 +144,8 @@ CameraSource::CameraSource(const sp<Camera> &camera)
     int32_t width, height, stride, sliceHeight;
     CameraParameters params(s);
     params.getPreviewSize(&width, &height);
+
+    (void)mCamera->storeMetaDataInBuffers(true);
 
     // Calculate glitch duraton threshold based on frame rate
     int32_t frameRate = params.getPreviewFrameRate();

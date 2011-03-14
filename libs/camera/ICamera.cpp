@@ -49,6 +49,9 @@ enum {
 #ifdef USE_GETBUFFERINFO
     GET_BUFFER_INFO,
 #endif
+    STORE_META_DATA_IN_BUFFERS,
+    IS_META_DATA_STORED_IN_BUFFERS,
+    SET_OVERLAY_FORMAT,
 };
 
 class BpCamera: public BpInterface<ICamera>
@@ -151,6 +154,25 @@ public:
         data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
         data.writeStrongBinder(mem->asBinder());
         remote()->transact(RELEASE_RECORDING_FRAME, data, &reply);
+    }
+
+    status_t storeMetaDataInBuffers(bool enabled)
+    {
+        LOGV("storeMetaDataInBuffers: %s", enabled? "true": "false");
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        data.writeInt32(enabled);
+        remote()->transact(STORE_META_DATA_IN_BUFFERS, data, &reply);
+        return reply.readInt32();
+    }
+
+    bool isMetaDataStoredInVideoBuffers()
+    {
+        LOGV("isMetaDataStoredInVideoBuffers");
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        remote()->transact(IS_META_DATA_STORED_IN_BUFFERS, data, &reply);
+        return (bool)reply.readInt32();
     }
 
     // check preview state
@@ -259,6 +281,15 @@ public:
         remote()->transact(UNLOCK, data, &reply);
         return reply.readInt32();
     }
+    status_t setOverlayFormat(int format)
+    {
+        LOGV("setOverlayFormat: %d", format);
+        Parcel data, reply;
+        data.writeInterfaceToken(ICamera::getInterfaceDescriptor());
+        data.writeInt32(format);
+        remote()->transact(SET_OVERLAY_FORMAT, data, &reply);
+        return reply.readInt32();
+    }
 };
 
 IMPLEMENT_META_INTERFACE(Camera, "android.hardware.ICamera");
@@ -331,6 +362,19 @@ status_t BnCamera::onTransact(
             releaseRecordingFrame(mem);
             return NO_ERROR;
         } break;
+        case STORE_META_DATA_IN_BUFFERS: {
+            LOGV("STORE_META_DATA_IN_BUFFERS");
+            CHECK_INTERFACE(ICamera, data, reply);
+            bool enabled = data.readInt32();
+            reply->writeInt32(storeMetaDataInBuffers(enabled));
+            return NO_ERROR;
+        } break;
+        case IS_META_DATA_STORED_IN_BUFFERS: {
+            LOGV("IS_META_DATA_STORED_IN_BUFFERS");
+            CHECK_INTERFACE(ICamera, data, reply);
+            reply->writeInt32(isMetaDataStoredInVideoBuffers());
+            return NO_ERROR;
+        } break;
         case PREVIEW_ENABLED: {
             LOGV("PREVIEW_ENABLED");
             CHECK_INTERFACE(ICamera, data, reply);
@@ -397,6 +441,13 @@ status_t BnCamera::onTransact(
         case UNLOCK: {
             CHECK_INTERFACE(ICamera, data, reply);
             reply->writeInt32(unlock());
+            return NO_ERROR;
+        } break;
+        case SET_OVERLAY_FORMAT: {
+            LOGV("SET_OVERLAY_FORMAT");
+            CHECK_INTERFACE(ICamera, data, reply);
+            int format = data.readInt32();
+            reply->writeInt32(setOverlayFormat(format));
             return NO_ERROR;
         } break;
         default:

@@ -82,8 +82,9 @@ sp<Camera> Camera::create(const sp<ICamera>& camera)
         c->mStatus = NO_ERROR;
         c->mCamera = camera;
         camera->asBinder()->linkToDeath(c);
+        return c;
     }
-    return c;
+    return 0;
 }
 
 void Camera::init()
@@ -211,6 +212,23 @@ status_t Camera::startPreview()
     sp <ICamera> c = mCamera;
     if (c == 0) return NO_INIT;
     return c->startPreview();
+}
+
+status_t Camera::storeMetaDataInBuffers(bool enabled)
+{
+    LOGV("storeMetaDataInBuffers: %s",
+            enabled? "true": "false");
+    sp <ICamera> c = mCamera;
+    if (c == 0) return NO_INIT;
+    return c->storeMetaDataInBuffers(enabled);
+}
+
+bool Camera::isMetaDataStoredInVideoBuffers()
+{
+    LOGV("isMetaDataStoredInVideoBuffers()");
+    sp <ICamera> c = mCamera;
+    if (c == 0) return NO_INIT;
+    return c->isMetaDataStoredInVideoBuffers();
 }
 
 // start recording mode, must call setPreviewDisplay first
@@ -374,6 +392,14 @@ void Camera::dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, const sp<
         LOGW("No listener was set. Drop a recording frame.");
         releaseRecordingFrame(dataPtr);
     }
+}
+
+status_t Camera::setOverlayFormat(int format)
+{
+    LOGV("setOverlayFormat: %d", format);
+    sp <ICamera> c = mCamera;
+    if (c == 0) return NO_INIT;
+    return c->setOverlayFormat(format);
 }
 
 void Camera::binderDied(const wp<IBinder>& who) {

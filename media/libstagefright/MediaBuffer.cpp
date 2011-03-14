@@ -45,7 +45,8 @@ MediaBuffer::MediaBuffer(void *data, size_t size)
       mRangeLength(size),
       mOwnsData(false),
       mMetaData(new MetaData),
-      mOriginal(NULL) {
+      mOriginal(NULL)
+{
 }
 
 MediaBuffer::MediaBuffer(size_t size)
@@ -58,7 +59,26 @@ MediaBuffer::MediaBuffer(size_t size)
       mRangeLength(size),
       mOwnsData(true),
       mMetaData(new MetaData),
-      mOriginal(NULL) {
+      mOriginal(NULL)
+{
+}
+
+#define NVIDIA_MAGIC_EGLIMAGE_METADATA_TYPE 0x03133700
+
+MediaBuffer::MediaBuffer(sp<GraphicBuffer> buffer)
+    : mObserver(NULL),
+      mNextBuffer(NULL),
+      mRefCount(0),
+      mData(0),
+      mSize(0),
+      mRangeOffset(0),
+      mRangeLength(0),
+      mOwnsData(false),
+      mMetaData(new MetaData),
+      mOriginal(NULL)
+{
+    mData = (void*)new sp<GraphicBuffer>(buffer);
+    mMetaData->setInt32(kKeyBufferType, NVIDIA_MAGIC_EGLIMAGE_METADATA_TYPE);
 }
 
 void MediaBuffer::release() {
@@ -129,7 +149,12 @@ void MediaBuffer::reset() {
 MediaBuffer::~MediaBuffer() {
     CHECK_EQ(mObserver, NULL);
 
-    if (mOwnsData && mData != NULL) {
+    int32_t btype;
+    if (mMetaData->findInt32(kKeyBufferType, &btype) &&
+        btype == NVIDIA_MAGIC_EGLIMAGE_METADATA_TYPE)
+    {
+        delete ((sp<GraphicBuffer>*)mData);
+    } else if (mOwnsData && mData != NULL) {
         free(mData);
         mData = NULL;
     }

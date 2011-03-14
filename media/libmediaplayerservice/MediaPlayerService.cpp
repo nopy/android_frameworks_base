@@ -63,6 +63,12 @@
 
 #include <OMX.h>
 
+#ifdef USE_BOARD_MEDIAPLUGIN
+#define NO_OPENCORE 1
+#include <hardware_legacy/MediaPlayerHardwareInterface.h>
+#endif
+
+
 /* desktop Linux needs a little help with gettid() */
 #if defined(HAVE_GETTID) && !defined(HAVE_ANDROID_OS)
 #define __KERNEL__
@@ -677,7 +683,14 @@ void MediaPlayerService::Client::disconnect()
 }
 
 static player_type getDefaultPlayerType() {
+#ifndef NO_OPENCORE
+    return PV_PLAYER;
+#endif
+#ifdef USE_BOARD_MEDIAPLUGIN
+    return BOARD_HW_PLAYER;
+#else
     return STAGEFRIGHT_PLAYER;
+#endif
 }
 
 player_type getPlayerType(int fd, int64_t offset, int64_t length)
@@ -693,13 +706,6 @@ player_type getPlayerType(int fd, int64_t offset, int64_t length)
     if (ident == 0x5367674f) // 'OggS'
         return STAGEFRIGHT_PLAYER;
 
-#ifndef NO_OPENCORE
-    if (ident == 0x75b22630) {
-        // The magic number for .asf files, i.e. wmv and wma content.
-        // These are not currently supported through stagefright.
-        return PV_PLAYER;
-    }
-#endif
 
     if (ident == 0x43614c66) // 'fLaC'
         return FLAC_PLAYER;
@@ -762,7 +768,7 @@ static sp<MediaPlayerBase> createPlayer(player_type playerType, void* cookie,
     switch (playerType) {
 #ifndef NO_OPENCORE
         case PV_PLAYER:
-            LOGV(" create PVPlayer");
+            LOGE(" create PVPlayer");
             p = new PVPlayer();
             break;
 #endif
@@ -782,6 +788,12 @@ static sp<MediaPlayerBase> createPlayer(player_type playerType, void* cookie,
             LOGV(" create FLACPlayer");
             p = new FLACPlayer();
             break;
+#ifdef USE_BOARD_MEDIAPLUGIN
+        case BOARD_HW_PLAYER:
+            LOGE(" create BoardHWPlayer");
+            p = createMediaPlayerHardware();
+            break;
+#endif
     }
     if (p != NULL) {
         if (p->initCheck() == NO_ERROR) {

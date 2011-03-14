@@ -60,6 +60,8 @@
 #endif
 
 #include "include/ThreadedSource.h"
+#include <ui/GraphicBuffer.h>
+#include <ui/PixelFormat.h>
 
 namespace android {
 
@@ -159,6 +161,7 @@ static sp<MediaSource> InstantiateSoftwareCodec(
 
 static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_IMAGE_JPEG, "OMX.TI.JPEG.decode" },
+    //{ MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.Nvidia.mp3.decoder" },
 //    { MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.TI.MP3.decode" },
     { MEDIA_MIMETYPE_AUDIO_MPEG, "MP3Decoder" },
 //    { MEDIA_MIMETYPE_AUDIO_MPEG, "OMX.PV.mp3dec" },
@@ -168,28 +171,34 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.TI.WBAMR.decode" },
     { MEDIA_MIMETYPE_AUDIO_AMR_WB, "AMRWBDecoder" },
 //    { MEDIA_MIMETYPE_AUDIO_AMR_WB, "OMX.PV.amrdec" },
+    //{ MEDIA_MIMETYPE_AUDIO_AAC, "OMX.Nvidia.aac.decoder" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.TI.AAC.decode" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACDecoder" },
 //    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.PV.aacdec" },
+    { MEDIA_MIMETYPE_AUDIO_WMA, "OMX.Nvidia.wma.decoder" },
     { MEDIA_MIMETYPE_AUDIO_G711_ALAW, "G711Decoder" },
     { MEDIA_MIMETYPE_AUDIO_G711_MLAW, "G711Decoder" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.Nvidia.mp4.decode" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.7x30.video.decoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.video.decoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.SEC.MPEG4.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Decoder" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.Nvidia.h263.decode" },
 //    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.PV.mpeg4dec" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.qcom.7x30.video.decoder.h263" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.qcom.video.decoder.h263" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.SEC.H263.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Decoder" },
 //    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.PV.h263dec" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.Nvidia.h264.decode" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.7x30.video.decoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.video.decoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.SEC.AVC.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "AVCDecoder" },
 //    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.PV.avcdec" },
+    {MEDIA_MIMETYPE_VIDEO_WMV, "OMX.Nvidia.vc1.decode" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "VorbisDecoder" },
     { MEDIA_MIMETYPE_VIDEO_VPX, "VPXDecoder" },
 };
@@ -202,18 +211,21 @@ static const CodecInfo kEncoderInfo[] = {
     { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.TI.AAC.encode" },
     { MEDIA_MIMETYPE_AUDIO_AAC, "AACEncoder" },
 //    { MEDIA_MIMETYPE_AUDIO_AAC, "OMX.PV.aacenc" },
+    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.Nvidia.mp4.encoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.7x30.video.encoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.qcom.video.encoder.mpeg4" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.TI.Video.encoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.SEC.MPEG4.Encoder" },
     { MEDIA_MIMETYPE_VIDEO_MPEG4, "M4vH263Encoder" },
 //    { MEDIA_MIMETYPE_VIDEO_MPEG4, "OMX.PV.mpeg4enc" },
+    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.Nvidia.h263.encoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.qcom.7x30.video.encoder.h263" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.qcom.video.encoder.h263" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.TI.Video.encoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "OMX.SEC.H263.Encoder" },
     { MEDIA_MIMETYPE_VIDEO_H263, "M4vH263Encoder" },
 //    { MEDIA_MIMETYPE_VIDEO_H263, "OMX.PV.h263enc" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.Nvidia.h264.encoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.7x30.video.encoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.video.encoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.Video.encoder" },
@@ -503,7 +515,7 @@ sp<MediaSource> OMXCodec::Create(
 
         sp<MediaSource> softwareCodec = createEncoder?
             InstantiateSoftwareEncoder(componentName, source, meta):
-            InstantiateSoftwareCodec(componentName, source);
+        InstantiateSoftwareCodec(componentName, source);
 
         if (softwareCodec != NULL) {
             LOGV("Successfully allocated software codec '%s'", componentName);
@@ -516,18 +528,18 @@ sp<MediaSource> OMXCodec::Create(
         uint32_t quirks = getComponentQuirks(componentName, createEncoder);
 
         if (!createEncoder
-                && (quirks & kOutputBuffersAreUnreadable)
-                && (flags & kClientNeedsFramebuffer)) {
-            if (strncmp(componentName, "OMX.SEC.", 8)) {
-                // For OMX.SEC.* decoders we can enable a special mode that
-                // gives the client access to the framebuffer contents.
+            && (quirks & kOutputBuffersAreUnreadable)
+            && (flags & kClientNeedsFramebuffer)) {
+                if (strncmp(componentName, "OMX.SEC.", 8)) {
+                    // For OMX.SEC.* decoders we can enable a special mode that
+                    // gives the client access to the framebuffer contents.
 
-                LOGW("Component '%s' does not give the client access to "
-                     "the framebuffer contents. Skipping.",
-                     componentName);
+                    LOGW("Component '%s' does not give the client access to "
+                        "the framebuffer contents. Skipping.",
+                        componentName);
 
-                continue;
-            }
+                    continue;
+                }
         }
 
         status_t err = omx->allocateNode(componentName, observer, &node);
@@ -535,9 +547,10 @@ sp<MediaSource> OMXCodec::Create(
             LOGV("Successfully allocated OMX node '%s'", componentName);
 
             sp<OMXCodec> codec = new OMXCodec(
-                    omx, node, quirks,
-                    createEncoder, mime, componentName,
-                    source);
+                omx, node, flags & kUseEGLImage,
+                quirks,
+                createEncoder, mime, componentName,
+                source);
 
             observer->setCodec(codec);
 
@@ -548,6 +561,8 @@ sp<MediaSource> OMXCodec::Create(
             }
 
             LOGV("Failed to configure codec '%s'", componentName);
+
+
         }
     }
 
@@ -559,6 +574,18 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         uint32_t type;
         const void *data;
         size_t size;
+
+        if (meta->findData(kKeyHeader, &type, &data, &size)) {
+
+            LOGV ("Kkey header found .. SEND HEADER.");
+            addCodecSpecificData(data,size );
+        }
+
+        mIsMetaDataStoredInVideoBuffers = false;
+        if (!strcasecmp("OMX.Nvidia.h264.encoder", mComponentName)) {
+            mIsMetaDataStoredInVideoBuffers = true;
+        }
+
         if (meta->findData(kKeyESDS, &type, &data, &size)) {
             ESDS esds((const char *)data, size);
             CHECK_EQ(esds.InitCheck(), OK);
@@ -633,6 +660,7 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
             CODEC_LOGV(
                     "AVC profile = %d (%s), level = %d",
                     (int)profile, AVCProfileToString(profile), level);
+            mOMXProfile = profile;
 
             if (!strcmp(mComponentName, "OMX.TI.Video.Decoder")
                 && (profile != kAVCProfileBaseline || level > 30)) {
@@ -716,6 +744,11 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta, uint32_t flags) {
         setMinBufferSize(kPortIndexOutput, 8192);  // XXX
     }
 
+    if (!strncmp(mComponentName, "OMX.Nvidia.", 11)
+        && mUseEGLImage != 0 ) {
+        setMinBufferCount(kPortIndexOutput, 6);
+    }
+
     initOutputFormat(meta);
 
     if ((flags & kClientNeedsFramebuffer)
@@ -778,6 +811,32 @@ void OMXCodec::setMinBufferSize(OMX_U32 portIndex, OMX_U32 size) {
         CHECK(def.nBufferSize >= size);
     }
 }
+
+void OMXCodec::setMinBufferCount(OMX_U32 portIndex, OMX_U32 count) {
+    OMX_PARAM_PORTDEFINITIONTYPE def;
+    InitOMXParams(&def);
+    def.nPortIndex = portIndex;
+
+    status_t err = mOMX->getParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    if (def.nBufferCountActual < count) {
+        def.nBufferCountActual = count;
+    }
+
+    err = mOMX->setParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    err = mOMX->getParameter(
+            mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+    CHECK_EQ(err, OK);
+
+    // Make sure the setting actually stuck.
+    CHECK(def.nBufferCountActual >= count);
+}
+
 
 status_t OMXCodec::setVideoPortFormatType(
         OMX_U32 portIndex,
@@ -1333,6 +1392,8 @@ status_t OMXCodec::setVideoOutputFormat(
         compressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_H263, mime)) {
         compressionFormat = OMX_VIDEO_CodingH263;
+    }else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_WMV, mime)) {
+        compressionFormat = OMX_VIDEO_CodingWMV;
     } else {
         LOGE("Not a supported video mime type: %s", mime);
         CHECK(!"Should not be here. Not a supported video mime type.");
@@ -1434,7 +1495,8 @@ status_t OMXCodec::setVideoOutputFormat(
 }
 
 OMXCodec::OMXCodec(
-        const sp<IOMX> &omx, IOMX::node_id node, uint32_t quirks,
+        const sp<IOMX> &omx, IOMX::node_id node, bool useEGLImage,
+        uint32_t quirks,
         bool isEncoder,
         const char *mime,
         const char *componentName,
@@ -1443,6 +1505,7 @@ OMXCodec::OMXCodec(
       mOMXLivesLocally(omx->livesLocally(getpid())),
       mNode(node),
       mQuirks(quirks),
+      mUseEGLImage(useEGLImage),
       mIsEncoder(isEncoder),
       mMIME(strdup(mime)),
       mComponentName(strdup(componentName)),
@@ -1463,6 +1526,7 @@ OMXCodec::OMXCodec(
     mPortStatus[kPortIndexOutput] = ENABLED;
 
     setComponentRole();
+    mOMXProfile = 0;
 }
 
 // static
@@ -1566,7 +1630,11 @@ status_t OMXCodec::init() {
     }
 
     err = allocateBuffers();
-    CHECK_EQ(err, OK);
+    if (err != OK)
+    {
+        setState(ERROR);
+        return err;
+    }
 
     if (mQuirks & kRequiresLoadedToIdleAfterAllocation) {
         err = mOMX->sendCommand(mNode, OMX_CommandStateSet, OMX_StateIdle);
@@ -1613,12 +1681,22 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         return err;
     }
 
+    if (mIsMetaDataStoredInVideoBuffers && portIndex == kPortIndexInput) {
+        err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexInput, OMX_TRUE);
+        if (err != OK) {
+            LOGE("Storing meta data in video buffers is not supported");
+            return err;
+        }
+    }
+
     CODEC_LOGI("allocating %lu buffers of size %lu on %s port",
             def.nBufferCountActual, def.nBufferSize,
             portIndex == kPortIndexInput ? "input" : "output");
 
-    size_t totalSize = def.nBufferCountActual * def.nBufferSize;
-    mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+    if (!(mUseEGLImage && portIndex == kPortIndexOutput)) {
+        size_t totalSize = def.nBufferCountActual * def.nBufferSize;
+        mDealer[portIndex] = new MemoryDealer(totalSize, "OMXCodec");
+    }
 
 #ifdef USE_GETBUFFERINFO
     sp<IMemoryHeap> pFrameHeap = NULL;
@@ -1656,16 +1734,43 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
 #endif
 
     for (OMX_U32 i = 0; i < def.nBufferCountActual; ++i) {
-        sp<IMemory> mem = mDealer[portIndex]->allocate(def.nBufferSize);
-        CHECK(mem.get() != NULL);
+        sp<IMemory> mem = NULL;
+        sp<GraphicBuffer> grBuffer = NULL;
+
+        if ( !mUseEGLImage || portIndex == kPortIndexInput) {
+            CHECK(mDealer[portIndex].get() != NULL);
+            mem = mDealer[portIndex]->allocate(def.nBufferSize);
+            CHECK(mem.get() != NULL);
+        }
 
         BufferInfo info;
         info.mData = NULL;
         info.mSize = def.nBufferSize;
 
         IOMX::buffer_id buffer;
-        if (portIndex == kPortIndexInput
-                && (mQuirks & kRequiresAllocateBufferOnInputPorts)) {
+        if (mUseEGLImage &&
+            portIndex == kPortIndexOutput) {
+
+            LOGV("Creating EGLImage %d x %d",
+                 (int)def.format.video.nFrameWidth,
+                 (int)def.format.video.nFrameHeight);
+
+            err = createGraphicBuffer(
+                    def.format.video.nFrameWidth,
+                    def.format.video.nFrameHeight,
+                    PIXEL_FORMAT_RGBA_8888,
+                    grBuffer);
+            if (err != OK) {
+                LOGE("allocateBuffersOnPort(%s) failed in createGraphicBuffer()",
+                     portIndex == kPortIndexInput ? "input" : "output");
+                return err;
+            }
+
+            err = mOMX->useEGLImage(
+                    mNode, portIndex, grBuffer, &buffer);
+
+        } else if (portIndex == kPortIndexInput
+                   && (mQuirks & kRequiresAllocateBufferOnInputPorts)) {
             if (mOMXLivesLocally) {
                 mem.clear();
 
@@ -1708,7 +1813,8 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         }
 
         if (err != OK) {
-            LOGE("allocate_buffer_with_backup failed");
+            LOGE("allocateBuffersOnPort(%s) failed",
+                 portIndex == kPortIndexInput ? "input" : "output");
             return err;
         }
 
@@ -1720,9 +1826,13 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
         info.mOwnedByComponent = false;
         info.mMem = mem;
         info.mMediaBuffer = NULL;
+        info.mGraphicBuffer = NULL;
 
         if (portIndex == kPortIndexOutput) {
-            if (!(mOMXLivesLocally
+            if (mUseEGLImage) {
+                info.mMediaBuffer = new MediaBuffer(grBuffer);
+                info.mMediaBuffer->setObserver(this);
+            } else if (!(mOMXLivesLocally
                         && (mQuirks & kRequiresAllocateBufferOnOutputPorts)
                         && (mQuirks & kDefersOutputBufferAllocation))) {
                 // If the node does not fill in the buffer ptr at this time,
@@ -1740,6 +1850,30 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
     }
 
     // dumpPortStatus(portIndex);
+
+    return OK;
+}
+
+status_t OMXCodec::createGraphicBuffer(
+        int32_t w, int32_t h, PixelFormat format,
+        sp<GraphicBuffer>& grBuffer)
+{
+    status_t err;
+
+    grBuffer = new GraphicBuffer();
+    if (!grBuffer.get())
+        return NO_MEMORY;
+
+    err = grBuffer->reallocate(
+            w, h, format,
+            GraphicBuffer::USAGE_HW_TEXTURE | GraphicBuffer::USAGE_HW_2D);
+
+    if (err != NO_ERROR)
+    {
+        LOGE("Error %x in creating buffer (%dx%d, format %d)",
+             err, w, h, format);
+        return err;
+    }
 
     return OK;
 }
@@ -1853,6 +1987,15 @@ void OMXCodec::on_message(const omx_message &msg) {
                     mOMX->freeBuffer(mNode, kPortIndexOutput, buffer);
                 CHECK_EQ(err, OK);
 
+                if (info->mMediaBuffer != NULL) {
+                    info->mMediaBuffer->setObserver(NULL);
+
+                    // Make sure nobody but us owns this buffer at this point.
+                    CHECK_EQ(info->mMediaBuffer->refcount(), 0);
+
+                    info->mMediaBuffer->release();
+                }
+
                 buffers->removeAt(i);
 #if 0
             } else if (mPortStatus[kPortIndexOutput] == ENABLED
@@ -1894,7 +2037,22 @@ void OMXCodec::on_message(const omx_message &msg) {
                         msg.u.extended_buffer_data.range_offset,
                         msg.u.extended_buffer_data.range_length);
 
+                // If we are using EGLImage path, we want to preserve the
+                // information about buffer type so that we can release the
+                // embedded GraphicsBuffer in MediaBuffer destructor.
+                //
+                // This is workaroud fix for nvbugs 766288, 766285. The
+                // information of EGLImage usage should be stored elsewhere but
+                // we want to preserve backwards compatibility.
+
+                int32_t btype = 0;
+                if (mUseEGLImage)
+                    buffer->meta_data()->findInt32(kKeyBufferType, &btype);
+
                 buffer->meta_data()->clear();
+
+                if (mUseEGLImage)
+                    buffer->meta_data()->setInt32(kKeyBufferType, btype);
 
                 buffer->meta_data()->setInt64(
                         kKeyTime, msg.u.extended_buffer_data.timestamp);
@@ -1993,7 +2151,15 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
 
         case OMX_EventPortSettingsChanged:
         {
-            onPortSettingsChanged(data1);
+            CODEC_LOGV("OMX_EventPortSettingsChanged(port=%ld, data2=0x%08lx)",
+                       data1, data2);
+
+            if (data2 == 0 || data2 == OMX_IndexParamPortDefinition) {
+                onPortSettingsChanged(data1);
+            } else if (data1 == kPortIndexOutput
+                    && data2 == OMX_IndexConfigCommonOutputCrop) {
+                // todo: handle crop rect
+            }
             break;
         }
 
@@ -2205,7 +2371,38 @@ void OMXCodec::onStateChange(OMX_STATETYPE newState) {
         {
             CODEC_LOGV("Now Idle.");
             if (mState == LOADED_TO_IDLE) {
-                status_t err = mOMX->sendCommand(
+                status_t err;
+
+                // If NVIDIA, check for available resources for AVC before allowing
+                // codec to transition to executing
+                if (!strcmp(mComponentName, "OMX.Nvidia.h264.decode") && mOMXProfile)
+                {
+                    OMX_INDEXTYPE index;
+
+                    // If getExtension fails, then we can't check resources so set ERROR state so that Init will fail.
+                    err = mOMX->getExtensionIndex(mNode, "OMX.Nvidia.index.config.checkresources", &index);
+                    if(err != OK)
+                    {
+                        setState(ERROR);
+                        break;
+                    }
+
+                    OMX_VIDEO_PARAM_PROFILELEVELTYPE ProfileHeader;
+                    memset(&ProfileHeader, 0, sizeof(ProfileHeader));
+                    InitOMXParams(&ProfileHeader);
+                    ProfileHeader.nPortIndex = kPortIndexInput;
+                    ProfileHeader.eProfile = mOMXProfile;
+
+                    // If setConfig fails, then we are out of resources so set ERROR state so that Init will fail.
+                    err = mOMX->setConfig(mNode, index, &ProfileHeader, sizeof(ProfileHeader));
+                    if(err != OK)
+                    {
+                        setState(ERROR);
+                        break;
+                    }
+                }
+
+                err = mOMX->sendCommand(
                         mNode, OMX_CommandStateSet, OMX_StateExecuting);
 
                 CHECK_EQ(err, OK);
@@ -2444,6 +2641,7 @@ void OMXCodec::drainInputBuffers() {
 
 void OMXCodec::drainInputBuffer(BufferInfo *info) {
     CHECK_EQ(info->mOwnedByComponent, false);
+    CHECK(info->mMem != NULL);
 
     if (mSignalledEOS) {
         return;
@@ -2470,6 +2668,7 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
         } else {
             CHECK(info->mSize >= specific->mSize);
             memcpy(info->mData, specific->mData, specific->mSize);
+            CODEC_LOGV  ("sending header data to decoder size %d",specific->mSize);
         }
 
         mNoMoreOutputData = false;
@@ -2573,7 +2772,7 @@ void OMXCodec::drainInputBuffer(BufferInfo *info) {
             OMX_BUFFERHEADERTYPE *header = (OMX_BUFFERHEADERTYPE *) info->mBuffer;
             header->pBuffer = (OMX_U8 *) srcBuffer->data() + srcBuffer->range_offset();
         } else {
-            if (mQuirks & kStoreMetaDataInInputVideoBuffers) {
+            if (mIsMetaDataStoredInVideoBuffers) {
                 releaseBuffer = false;
                 info->mMediaBuffer = srcBuffer;
             }
@@ -3577,6 +3776,8 @@ void OMXCodec::dumpPortStatus(OMX_U32 portIndex) {
 void OMXCodec::initOutputFormat(const sp<MetaData> &inputFormat) {
     mOutputFormat = new MetaData;
     mOutputFormat->setCString(kKeyDecoderComponent, mComponentName);
+    mOutputFormat->setInt32(kKeyNodeId, (int32_t)mNode);
+
     if (mIsEncoder) {
         int32_t timeScale;
         if (inputFormat->findInt32(kKeyTimeScale, &timeScale)) {

@@ -216,6 +216,12 @@ public:
             // send command to camera driver
             status_t    sendCommand(int32_t cmd, int32_t arg1, int32_t arg2);
 
+            // tell camera hal to store meta data or real YUV in video buffers.
+            status_t    storeMetaDataInBuffers(bool enabled);
+
+            // query camera if it stores meta data in video buffers.
+            bool isMetaDataStoredInVideoBuffers();
+
             void        setListener(const sp<CameraListener>& listener);
             void        setPreviewCallbackFlags(int preview_callback_flag);
 
@@ -225,6 +231,9 @@ public:
     virtual void        dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr);
 
     sp<ICamera>         remote();
+
+    // set overlay format for preview
+    status_t            setOverlayFormat(int format);
 
 private:
                         Camera();

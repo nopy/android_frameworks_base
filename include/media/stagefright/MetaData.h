@@ -75,7 +75,6 @@ enum {
     kKeyWriter            = 'writ',  // cstring
     kKeyCompilation       = 'cpil',  // cstring
     kKeyTimeScale         = 'tmsl',  // int32_t
-
     // video profile and level
     kKeyVideoProfile      = 'vprf',  // int32_t
     kKeyVideoLevel        = 'vlev',  // int32_t
@@ -102,11 +101,15 @@ enum {
     kKeyValidSamples      = 'valD',  // int32_t
 
     kKeyIsUnreadable      = 'unre',  // bool (int32_t)
+    kKeyHeader            = 'hder',
+    kKeyBufferType        = 'bufT',
+    kKeyNodeId            = 'node',  // int32_t
 };
 
 enum {
     kTypeESDS        = 'esds',
     kTypeAVCC        = 'avcc',
+    kTypeHeader      = 'hder',
 };
 
 class MetaData : public RefBase {

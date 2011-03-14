@@ -45,6 +45,8 @@ enum player_type {
     // argument to the 'test:' url in the setDataSource call.
     TEST_PLAYER = 5,
     FLAC_PLAYER = 6,
+    // Used if BOARD_USES_HW_MEDIAPLUGINS is true
+    BOARD_HW_PLAYER = 7,
 };
 
 

@@ -146,6 +146,7 @@ private:
     uint32_t mExtractorFlags;
 
     int32_t mVideoWidth, mVideoHeight;
+    uint32_t mSinceLastDropped;
     int64_t mTimeSourceDeltaUs;
     int64_t mVideoTimeUs;
 

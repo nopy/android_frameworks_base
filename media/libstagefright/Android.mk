@@ -19,6 +19,7 @@ LOCAL_SRC_FILES:=                         \
         MPEG2TSWriter.cpp                 \
         MPEG4Extractor.cpp                \
         MPEG4Writer.cpp                   \
+        SuperExtractor.cpp                \
         MediaBuffer.cpp                   \
         MediaBufferGroup.cpp              \
         MediaDefs.cpp                     \
@@ -42,6 +43,7 @@ LOCAL_SRC_FILES:=                         \
         Utils.cpp                         \
         WAVExtractor.cpp                  \
         avc_utils.cpp                     \
+        sfQueue.cpp                       \
         string.cpp
 
 LOCAL_C_INCLUDES:= \
@@ -49,7 +51,8 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/frameworks/base/include/media/stagefright/openmax \
         $(TOP)/external/tremolo \
         $(TOP)/external/flac/include \
-        $(TOP)/frameworks/base/media/libstagefright/rtsp
+        $(TOP)/frameworks/base/media/libstagefright/rtsp \
+        $(TEGRA_ROOT)/include/openmax/il
 
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \

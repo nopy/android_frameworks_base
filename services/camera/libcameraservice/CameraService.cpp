@@ -353,7 +353,9 @@ CameraService::Client::Client(const sp<CameraService>& cameraService,
         mOrientationChanged = false;
         cameraService->setCameraBusy(cameraId);
         cameraService->loadSound();
+        mOverlayFormat = OVERLAY_FORMAT_DEFAULT;
 #ifdef USE_OVERLAY_FORMAT_YCbCr_420_SP
+        mOverlayFormat = HAL_PIXEL_FORMAT_YCbCr_420_SP;
     }
 #endif
     LOG1("Client::Client X (pid %d)", callingPid);
@@ -634,7 +636,7 @@ status_t CameraService::Client::setOverlay() {
 #ifdef USE_OVERLAY_FORMAT_YCbCr_420_SP
                                                       HAL_PIXEL_FORMAT_YCbCr_420_SP,
 #else
-                                                      OVERLAY_FORMAT_DEFAULT,
+                                                      mOverlayFormat,
 #endif
                                                       mOrientation);
                 if (mOverlayRef != 0) break;
@@ -837,6 +839,34 @@ void CameraService::Client::releaseRecordingFrame(const sp<IMemory>& mem) {
     Mutex::Autolock lock(mLock);
     if (checkPidAndHardware() != NO_ERROR) return;
     mHardware->releaseRecordingFrame(mem);
+}
+
+status_t CameraService::Client::storeMetaDataInBuffers(bool enabled)
+{
+    LOGI("storeMetaDataInBuffers: %s", enabled? "true": "false");
+    Mutex::Autolock lock(mLock);
+    //if (checkPid() != NO_ERROR) return UNKNOWN_ERROR;
+
+    if (mHardware == 0)
+    {
+      LOGE("mHardware is NULL, returning.");
+      return UNKNOWN_ERROR;
+    }
+    return mHardware->storeMetaDataInBuffers(enabled);
+}
+
+bool CameraService::Client::isMetaDataStoredInVideoBuffers()
+{
+    LOGI("isMetaDataStoredInVideoBuffers");
+    Mutex::Autolock lock(mLock);
+    //if (checkPid() != NO_ERROR) return UNKNOWN_ERROR;
+
+    if (mHardware == 0)
+    {
+      LOGE("mHardware is NULL, returning.");
+      return UNKNOWN_ERROR;
+    }
+    return mHardware->isMetaDataStoredInVideoBuffers();
 }
 
 bool CameraService::Client::previewEnabled() {
@@ -1250,6 +1280,17 @@ void CameraService::Client::handleCompressedPicture(const sp<IMemory>& mem) {
     }
 }
 
+status_t CameraService::Client::setOverlayFormat(int format)
+{
+    LOGV("setOverlayFormat %d\n", format);
+
+    if ((format >= OVERLAY_FORMAT_RGBA_8888) &&
+        (format <= OVERLAY_FORMAT_DEFAULT_DUAL_SECONDARY)) {
+        mOverlayFormat = format;
+        return OK;
+    } else
+        return INVALID_OPERATION;
+}
 
 void CameraService::Client::handleGenericNotify(int32_t msgType,
     int32_t ext1, int32_t ext2) {

@@ -21,6 +21,7 @@ enum {
     SET_PARAMETER,
     GET_CONFIG,
     SET_CONFIG,
+    USE_EGLIMAGE,
     USE_BUFFER,
     ALLOC_BUFFER,
     ALLOC_BUFFER_WITH_BACKUP,
@@ -31,6 +32,7 @@ enum {
     CREATE_RENDERER,
     OBSERVER_ON_MSG,
     RENDERER_RENDER,
+    STORE_META_DATA_IN_BUFFERS,
 };
 
 sp<IOMXRenderer> IOMX::createRenderer(
@@ -220,6 +222,28 @@ public:
         return reply.readInt32();
     }
 
+    virtual status_t useEGLImage(
+            node_id node, OMX_U32 port_index, const sp<GraphicBuffer> &grbuffer,
+            buffer_id *buffer) {
+        Parcel data, reply;
+
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.write(*grbuffer);
+        remote()->transact(USE_EGLIMAGE, data, &reply);
+        status_t err = reply.readInt32();
+        if (err != OK) {
+            *buffer = 0;
+
+            return err;
+        }
+
+        *buffer = (void*)reply.readIntPtr();
+
+        return err;
+    }
+
     virtual status_t useBuffer(
             node_id node, OMX_U32 port_index, const sp<IMemory> &params,
             buffer_id *buffer) {
@@ -370,6 +394,19 @@ public:
         remote()->transact(CREATE_RENDERER, data, &reply);
 
         return interface_cast<IOMXRenderer>(reply.readStrongBinder());
+    }
+
+    virtual status_t storeMetaDataInBuffers(
+            node_id node, OMX_U32 port_index, OMX_BOOL enable) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IOMX::getInterfaceDescriptor());
+        data.writeIntPtr((intptr_t)node);
+        data.writeInt32(port_index);
+        data.writeInt32((uint32_t)enable);
+        remote()->transact(STORE_META_DATA_IN_BUFFERS, data, &reply);
+
+        status_t err = reply.readInt32();
+        return err;
     }
 };
 
@@ -547,6 +584,30 @@ status_t BnOMX::onTransact(
             return NO_ERROR;
         }
 
+        case USE_EGLIMAGE:
+        {
+            CHECK_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+
+            sp<GraphicBuffer> grbuffer = new GraphicBuffer();
+            status_t err = data.read(*grbuffer);
+            if (err != NO_ERROR) {
+                return err;
+            }
+
+            buffer_id buffer;
+            err = useEGLImage(node, port_index, grbuffer, &buffer);
+            reply->writeInt32(err);
+
+            if (err == OK) {
+                reply->writeIntPtr((intptr_t)buffer);
+            }
+
+            return NO_ERROR;
+        }
+
         case USE_BUFFER:
         {
             CHECK_INTERFACE(IOMX, data, reply);
@@ -563,6 +624,20 @@ status_t BnOMX::onTransact(
             if (err == OK) {
                 reply->writeIntPtr((intptr_t)buffer);
             }
+
+            return NO_ERROR;
+        }
+
+        case STORE_META_DATA_IN_BUFFERS:
+        {
+            CHECK_INTERFACE(IOMX, data, reply);
+
+            node_id node = (void*)data.readIntPtr();
+            OMX_U32 port_index = data.readInt32();
+            OMX_BOOL enable = (OMX_BOOL)data.readInt32();
+
+            status_t err = storeMetaDataInBuffers(node, port_index, enable);
+            reply->writeInt32(err);
 
             return NO_ERROR;
         }
