@@ -52,7 +52,7 @@ LOCAL_C_INCLUDES:= \
         $(TOP)/external/tremolo \
         $(TOP)/external/flac/include \
         $(TOP)/frameworks/base/media/libstagefright/rtsp \
-        $(TEGRA_ROOT)/include/openmax/il
+        $(TOP)/hardware/tegra/include
 
 LOCAL_SHARED_LIBRARIES := \
         libbinder         \
